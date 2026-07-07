@@ -86,7 +86,7 @@ export const QrClockIn: React.FC = () => {
         setStatusMessage("Sending clock-in data to server...");
 
         try {
-          const response = await fetch("/api/v1/health/qr", {
+          const response = await fetch("/api/v1/qrcode/test", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
