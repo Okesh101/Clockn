@@ -32,8 +32,8 @@ class QrLocation(db.Model):
             "id": str(self.id),
             "qr_string": self.qr_string,
             "location": self.location,
-            "latitude": self.latitude,
-            "longitude": self.longitude,
+            "latitude": float(self.latitude) if self.latitude else None,
+            "longitude": float(self.longitude) if self.longitude else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }
