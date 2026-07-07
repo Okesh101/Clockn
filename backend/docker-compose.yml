@@ -1,0 +1,19 @@
+# version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: local_clockn_db
+    restart: always
+    environment:
+      POSTGRES_USER: dev_user_clockn
+      POSTGRES_PASSWORD: dev_password_clockn
+      POSTGRES_DB: clockn_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+    
