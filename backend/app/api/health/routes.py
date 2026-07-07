@@ -37,17 +37,3 @@ def pinging_endpoint():
         "code": 200,
         "message": "Service is running."
     })
-
-
-@health_bp.route("/qr", methods=['POST'])
-def post_health_check():
-    from flask import request
-    data = request.get_json() or {}
-    resp = {
-        "status": "OK",
-        "code": 200,
-        "data": data,
-        "message": "Health check submitted."
-    }
-    print(f"Received QR Code: {data}")
-    return jsonify(resp)

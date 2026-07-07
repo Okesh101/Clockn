@@ -2,7 +2,7 @@
 
 from app import db
 from sqlalchemy.dialects.postgresql import UUID
-import uuid
+
 
 user_roles = db.Table(
     'user_roles',
