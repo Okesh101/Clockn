@@ -10,6 +10,7 @@ from flask_jwt_extended import create_access_token, create_refresh_token, jwt_re
 auth_bp = Blueprint("auth", __name__)
 
 
+# api/v1/auth/register
 @auth_bp.route("/register", methods=["POST"])
 @limiter.limit('15 per minute')
 def register_endpoint():
@@ -81,6 +82,7 @@ def register_endpoint():
         }), 500
 
 
+# api/v1/auth/login
 @auth_bp.route("/login", methods=["POST"])
 @limiter.limit('10 per minute')
 def login_endpoint():
@@ -117,6 +119,7 @@ def login_endpoint():
     }), 200
 
 
+# api/v1/auth/profile
 @auth_bp.route("/profile", methods=["GET"])
 @jwt_required()
 def get_profile_endpoint():
@@ -140,6 +143,7 @@ def get_profile_endpoint():
     }), 200
 
 
+# api/v1/auth/logout
 @auth_bp.route("/logout", methods=['POST'])
 @jwt_required()  # Protects via Access Token
 def logout_endpoint():
@@ -174,6 +178,7 @@ def logout_endpoint():
     }), 200
 
 
+# api/v1/auth/refresh
 @auth_bp.route("/refresh", methods=['POST'])
 @jwt_required(refresh=True)
 def refresh_endpoint():

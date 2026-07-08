@@ -9,6 +9,7 @@ from app.utils.decorators import roles_required
 
 roles_bp = Blueprint("roles", __name__)
 
+# api/v1/roles/seed
 @roles_bp.route("/seed", methods=["POST"])
 @limiter.limit('1 per minute')
 def seed_roles_endpoint():
@@ -54,6 +55,7 @@ def seed_roles_endpoint():
         }), 500
     
 
+# api/v1/roles/upgrade
 @roles_bp.route("/upgrade", methods=["POST"])
 @limiter.limit('5 per minute')
 @jwt_required()

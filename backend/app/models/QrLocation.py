@@ -10,7 +10,8 @@ class QrLocation(db.Model):
 
     id = db.Column(UUID(as_uuid=True), nullable=False,
                    primary_key=True, default=uuid.uuid4)
-    qr_string = db.Column(db.String(255), nullable=False, unique=True)
+    qr_string = db.Column(UUID(as_uuid=True), nullable=False,
+                          unique=True, default=uuid.uuid4)
     location = db.Column(db.Text, nullable=False)
     latitude = db.Column(db.Numeric(10, 8), nullable=False)
     longitude = db.Column(db.Numeric(11, 8), nullable=False)
@@ -30,7 +31,7 @@ class QrLocation(db.Model):
     def to_dict(self):
         return {
             "id": str(self.id),
-            "qr_string": self.qr_string,
+            "qr_string": str(self.qr_string),
             "location": self.location,
             "latitude": float(self.latitude) if self.latitude else None,
             "longitude": float(self.longitude) if self.longitude else None,

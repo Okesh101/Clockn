@@ -6,9 +6,11 @@ from app.models.QrLocation import QrLocation
 from flask_jwt_extended import jwt_required
 from app.utils.decorators import roles_required
 
+
 qrcode_bp = Blueprint("qrcode", __name__)
 
 
+# api/v1/qrcode/test
 @qrcode_bp.route("/test", methods=['POST'])
 def test_qrcode_endpoint():
     data = request.get_json() or {}
@@ -22,6 +24,7 @@ def test_qrcode_endpoint():
     return jsonify(resp)
 
 
+# api/v1/qrcode (Create QR Location)
 @qrcode_bp.route("", methods=["POST"])
 @limiter.limit("5 per minute")
 @jwt_required()
@@ -36,20 +39,18 @@ def create_qrcode_location_endpoint():
             "message": "No input data provided"
         }), 400
 
-    qr_string = data.get("qr_string")
     location = data.get("location")
     latitude = data.get("latitude")
     longitude = data.get("longitude")
 
-    if not all([qr_string, location, latitude, longitude]):
+    if not all([location, latitude, longitude]):
         return jsonify({
             "status": "ERROR",
             "code": 400,
-            "message": f"Missing required fields: {', '.join([f for f in ['qr_string', 'location', 'latitude', 'longitude'] if not data.get(f)])}"
+            "message": f"Missing required fields: {', '.join([f for f in ['location', 'latitude', 'longitude'] if not data.get(f)])}"
         }), 400
-
+    
     new_location = QrLocation(
-        qr_string=qr_string,
         location=location,
         latitude=latitude,
         longitude=longitude
@@ -73,6 +74,7 @@ def create_qrcode_location_endpoint():
         }), 500
 
 
+# api/v1/qrcode (Fetch all QR Locations)
 @qrcode_bp.route("", methods=["GET"])
 @limiter.limit("25 per minute")
 @jwt_required()
