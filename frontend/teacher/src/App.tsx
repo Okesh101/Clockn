@@ -1,13 +1,14 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
-import { QrClockIn } from './components/QrcodeComponent'
-import { QrGenerator } from './components/QrGenerator'
+import { useState } from "react";
+import reactLogo from "./assets/react.svg";
+import viteLogo from "./assets/vite.svg";
+import heroImg from "./assets/hero.png";
+import "./App.css";
+import { QrClockIn } from "./components/QrcodeComponent";
+import { QrGenerator } from "./components/QrGenerator";
+import { ButtonClockIn } from "./components/ButtonClockIn";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [count, setCount] = useState(0);
 
   return (
     <>
@@ -30,6 +31,7 @@ function App() {
         >
           Count is {count}
         </button>
+        <ButtonClockIn />
         <QrClockIn />
         <QrGenerator />
       </section>
@@ -120,7 +122,7 @@ function App() {
       <div className="ticks"></div>
       <section id="spacer"></section>
     </>
-  )
+  );
 }
 
-export default App
+export default App;
