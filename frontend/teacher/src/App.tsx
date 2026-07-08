@@ -4,6 +4,7 @@ import viteLogo from './assets/vite.svg'
 import heroImg from './assets/hero.png'
 import './App.css'
 import { QrClockIn } from './components/QrcodeComponent'
+import { QrGenerator } from './components/QrGenerator'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -30,6 +31,7 @@ function App() {
           Count is {count}
         </button>
         <QrClockIn />
+        <QrGenerator />
       </section>
 
       <div className="ticks"></div>
