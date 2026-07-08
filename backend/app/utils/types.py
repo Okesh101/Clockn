@@ -23,6 +23,9 @@ METHOD_CHOICES = ", ".join(
 
 
 SCHOOL_COORDINATES = {
-    "latitude": 6.00000,
-    "longitude": 3.00000,
+    "latitude": 6.534583,
+    "longitude": 3.388638,
 }
+
+TEACHER_DISTANCE_THRESHOLD_M = 300.0
+TEACHER_QR_DISTANCE_THRESHOLD_M = 30.0

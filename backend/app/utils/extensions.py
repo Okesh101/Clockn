@@ -31,9 +31,4 @@ def calculate_teacher_distance(teacher_lat, teacher_lng, obj, method):
         lat = float(obj.get("latitude"))
         lng = float(obj.get("longitude"))
 
-    return {
-        "status": "SUCCESS",
-        "distance": calculate_distance(teacher_lat, teacher_lng, lat, lng),
-        "code": 200,
-        "message": "Distance calculated successfully."
-    }
+    return calculate_distance(teacher_lat, teacher_lng, lat, lng)

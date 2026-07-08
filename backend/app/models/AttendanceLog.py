@@ -50,3 +50,13 @@ class AttendanceLog(db.Model):
             f"method IN ({METHOD_CHOICES})", name="valid_attendance_method"),
         nullable=True
     )
+    clock_in_qr = db.Column(
+        UUID(as_uuid=True),
+        db.ForeignKey('qr_locations.qr_string', ondelete='CASCADE'),
+        nullable=True
+    )
+    clock_out_qr = db.Column(
+        UUID(as_uuid=True),
+        db.ForeignKey('qr_locations.qr_string', ondelete='CASCADE'),
+        nullable=True
+    )

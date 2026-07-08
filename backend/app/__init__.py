@@ -52,17 +52,20 @@ def create_app():
     from app.models.TokenBlocklist import TokenBlocklist
     from app.models.Teacher import Teacher
     from app.models.QrLocation import QrLocation
+    from app.models.AttendanceLog import AttendanceLog
 
     # Blueprints
     from app.api.roles.routes import roles_bp
     from app.api.health.routes import health_bp
     from app.api.auth.routes import auth_bp
     from app.api.qrcode.routes import qrcode_bp
+    from app.api.attendance.routes import attendance_bp
 
     app.register_blueprint(roles_bp, url_prefix='/api/v1/roles')
     app.register_blueprint(health_bp, url_prefix='/api/v1/health')
     app.register_blueprint(auth_bp, url_prefix='/api/v1/auth')
     app.register_blueprint(qrcode_bp, url_prefix='/api/v1/qrcode')
+    app.register_blueprint(attendance_bp, url_prefix='/api/v1/attendance')
 
 
     # ====================================================================
