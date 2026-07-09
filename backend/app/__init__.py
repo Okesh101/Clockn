@@ -60,12 +60,14 @@ def create_app():
     from app.api.auth.routes import auth_bp
     from app.api.qrcode.routes import qrcode_bp
     from app.api.attendance.routes import attendance_bp
+    from app.api.teachers.routes import teachers_bp
 
     app.register_blueprint(roles_bp, url_prefix='/api/v1/roles')
     app.register_blueprint(health_bp, url_prefix='/api/v1/health')
     app.register_blueprint(auth_bp, url_prefix='/api/v1/auth')
     app.register_blueprint(qrcode_bp, url_prefix='/api/v1/qrcode')
     app.register_blueprint(attendance_bp, url_prefix='/api/v1/attendance')
+    app.register_blueprint(teachers_bp, url_prefix='/api/v1/teachers')
 
 
     # ====================================================================

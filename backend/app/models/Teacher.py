@@ -61,5 +61,6 @@ class Teacher(db.Model):
             "lastname": self.lastname,
             "email": self.email,
             "phone": self.phone,
-            "roles": [r.name for r in self.roles]
+            "roles": [r.name for r in self.roles],
+            "created_at": self.created_at
         }

@@ -1,16 +1,18 @@
 # app/api/attendance/routes.py
 
 from flask import Blueprint, request, jsonify
-from sqlalchemy import cast, Date
+from sqlalchemy import cast, Date, func, and_, case
+from sqlalchemy.orm import aliased
 from app import db, limiter
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from app.models.Teacher import Teacher
 from app.models.AttendanceLog import AttendanceLog
 from app.models.QrLocation import QrLocation
-from datetime import datetime, time
-import zoneinfo
-from app.utils.types import AttendanceStatus, AttendanceMethod, DIST_THRESHOLD, CutoffTime
+from app.utils.decorators import roles_required
+from app.utils.types import AttendanceStatus, PunctualityStatus, AttendanceMethod, DIST_THRESHOLD, CutoffTime
 from app.utils.extensions import calculate_teacher_distance
+from datetime import datetime, time, timedelta
+import zoneinfo
 
 attendance_bp = Blueprint("attendance", __name__)
 
@@ -75,17 +77,19 @@ def button_clock_in_endpoint():
     cutoff_time = time(CutoffTime.A_HR.value, CutoffTime.A_MIN.value)
     current_time_only = now_lagos.time()
 
+    # Determine punctuality state
     if current_time_only > cutoff_time:
-        current_status = AttendanceStatus.LATE.value
+        current_punctuality = PunctualityStatus.LATE.value
     else:
-        current_status = AttendanceStatus.PRESENT.value
+        current_punctuality = PunctualityStatus.ON_TIME.value
 
     try:
         new_log = AttendanceLog(
             teacher_id=current_teacher_id,
             time_in_lat=teacher_lat,
             time_in_lng=teacher_lng,
-            status=current_status,  # Passed explicitly
+            status=AttendanceStatus.PRESENT.value,       # Always present upon scanning!
+            punctuality=current_punctuality,
             time_in_method=AttendanceMethod.BUTTON.value  # resolves to "button"
         )
         db.session.add(new_log)
@@ -94,7 +98,7 @@ def button_clock_in_endpoint():
         return jsonify({
             "status": "SUCCESS",
             "code": 201,
-            "message": f"Clock-in successful. Status: {current_status}.",
+            "message": f"Clock-in successful. Punctual status: {current_punctuality}.",
             "data": {
                 "attendance_log_id": str(new_log.id),
                 "distance": int(DIST_THRESHOLD.BTN.value - teacher_distance_m),
@@ -183,17 +187,19 @@ def qr_clock_in_endpoint():
     cutoff_time = time(CutoffTime.A_HR.value, CutoffTime.A_MIN.value)
     current_time_only = now_lagos.time()
 
+    # Determine punctuality state
     if current_time_only > cutoff_time:
-        current_status = AttendanceStatus.LATE.value
+        current_punctuality = PunctualityStatus.LATE.value
     else:
-        current_status = AttendanceStatus.PRESENT.value
+        current_punctuality = PunctualityStatus.ON_TIME.value
 
     try:
         new_log = AttendanceLog(
             teacher_id=current_teacher_id,
             time_in_lat=teacher_lat,
             time_in_lng=teacher_lng,
-            status=current_status,  # Passed explicitly
+            status=AttendanceStatus.PRESENT.value,       # Always present upon scanning!
+            punctuality=current_punctuality,
             time_in_method=AttendanceMethod.QR.value,  # resolves to "qr"
             clock_in_qr=qr_string
         )
@@ -203,7 +209,7 @@ def qr_clock_in_endpoint():
         return jsonify({
             "status": "SUCCESS",
             "code": 201,
-            "message": f"Clock-in successful. Status: {current_status}.",
+            "message": f"Clock-in successful. Punctual status: {current_punctuality}.",
             "data": {
                 "attendance_log_id": str(new_log.id),
                 "distance": int(DIST_THRESHOLD.QR.value - teacher_distance_m),
@@ -445,3 +451,272 @@ def qr_clock_out_endpoint():
             "code": 500,
             "message": f"Server error occurred while clocking out: {str(e)}"
         }), 500
+
+
+@attendance_bp.route("", methods=['GET'])
+@limiter.limit('30 per minute')
+@jwt_required()
+@roles_required("Admin")
+def get_all_teachers_attendance_endpoint():
+    # 1. Coordinate localized Lagos timeline targets
+    lagos_tz = zoneinfo.ZoneInfo("Africa/Lagos")
+    now_lagos = datetime.now(lagos_tz)
+    today_lagos = now_lagos.date()
+
+    # 2. Extract and parse URL Date Range Filters
+    range_type = request.args.get('range_type', 'today')  # options: today, yesterday, month, custom
+    
+    if range_type == 'yesterday':
+        start_filter = today_lagos - timedelta(days=1)
+        end_filter = today_lagos - timedelta(days=1)
+    elif range_type == 'month':
+        start_filter = today_lagos.replace(day=1)
+        end_filter = today_lagos
+    elif range_type == 'custom':
+        try:
+            start_filter = datetime.strptime(request.args.get('start_date'), '%Y-%m-%d').date()
+            end_filter = datetime.strptime(request.args.get('end_date'), '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            return jsonify({
+                "status": "ERROR", 
+                "code": 400, 
+                "message": "Invalid custom date format. Use YYYY-MM-DD"
+            }), 400
+    else:  # Default fallback option is always 'today'
+        start_filter = today_lagos
+        end_filter = today_lagos
+
+    # 3. Grab and validate page numbers from URL parameters (e.g., ?page=2)
+    # Default to page 1, and ensure the input is an integer greater than 0
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+    except ValueError:
+        page = 1
+
+    PER_PAGE = 50
+    offset_value = (page - 1) * PER_PAGE
+
+    # 💡 FIX: Total count must scale dynamically based on your filters to protect pagination
+    # If looking at "today", total items equals total teachers. If looking at a range, count total log items.
+    if start_filter == end_filter:
+        total_count_query = db.select(func.count(Teacher.id))
+    else:
+        total_count_query = db.select(func.count(AttendanceLog.id)).filter(
+            cast(AttendanceLog.time_in, Date) >= start_filter,
+            cast(AttendanceLog.time_in, Date) <= end_filter
+        )
+
+    total_items = db.session.execute(total_count_query).scalar() or 0
+
+    if total_items == 0:
+        return jsonify({
+            "status": "NOT_FOUND",
+            "code": 404,
+            "message": "No records found for this range."
+        }), 404
+
+    total_pages = (total_items + PER_PAGE - 1) // PER_PAGE
+    has_next = page < total_pages
+    has_prev = page > 1
+
+    # 💡 FIX: Create SQL Aliases so we can fetch two completely different rows from QrLocation at once
+    InLocation = aliased(QrLocation, name="in_location")
+    OutLocation = aliased(QrLocation, name="out_location")
+
+    # 5. Core Composite Join Selection Query
+    # Left Outer Join matches all teachers and binds their logs ONLY within the target date range window
+    query = (
+        db.select(
+            Teacher.id.label("teacher_id"),
+            Teacher.firstname,
+            Teacher.lastname,
+            Teacher.email,
+            Teacher.phone,
+            AttendanceLog.id.label("log_id"),
+            AttendanceLog.time_in,
+            AttendanceLog.time_out,
+            AttendanceLog.status,
+            AttendanceLog.punctuality,
+            AttendanceLog.time_in_method,
+            AttendanceLog.time_out_method,
+            InLocation.location.label(
+                "clock_in_location_name"),   # Sweeps clock-in spot
+            OutLocation.location.label(
+                "clock_out_location_name")  # Sweeps clock-out spot
+        )
+        .outerjoin(
+            AttendanceLog,
+            and_(
+                AttendanceLog.teacher_id == Teacher.id,
+                cast(AttendanceLog.time_in, Date) >= start_filter,
+                cast(AttendanceLog.time_in, Date) <= end_filter
+            )
+        )
+        # 💡 FIX: Clean secondary outerjoins to safely extract textual names if QR fields are populated
+        .outerjoin(InLocation, AttendanceLog.clock_in_qr == InLocation.qr_string)
+        .outerjoin(OutLocation, AttendanceLog.clock_out_qr == OutLocation.qr_string)
+        .order_by(Teacher.lastname.asc(), AttendanceLog.time_in.desc())
+        .limit(PER_PAGE)
+        .offset(offset_value)
+    )
+
+    records = db.session.execute(query).all()
+
+    if not records and page > 1:
+        return jsonify({
+            "status": "ERROR", 
+            "code": 400, 
+            "message": f"Page {page} out of bounds."
+        }), 400
+
+    teachers_attendance_data = []
+
+    for row in records:
+        # Calculate time spent on campus if both clock-in and clock-out frames exist
+        duration_minutes = None
+        if row.time_in and row.time_out:
+            # 💡 .astimezone() is built right into row.time_in and row.time_out!
+            in_time_localized = row.time_in.astimezone(lagos_tz)
+            out_time_localized = row.time_out.astimezone(lagos_tz)
+
+            # Now the subtraction math will be 100% accurate
+            time_delta = out_time_localized - in_time_localized
+            duration_minutes = int(time_delta.total_seconds() // 60)
+
+        # 💡 FIX: Safely fallback to "Campus Button-Click" if they didn't use a QR code
+        in_loc = row.clock_in_location_name or (
+            "School (Button)" if row.time_in_method == "button" else None)
+        out_loc = row.clock_out_location_name or (
+            "School (Button)" if row.time_out_method == "button" else None)
+
+
+        # Build clean JSON serializable dictionary objects
+        teachers_attendance_data.append({
+            "teacher_id": str(row.teacher_id),
+            "teacher_name": f"{row.lastname} {row.firstname}",
+            "email": row.email,
+            "phone": row.phone,
+            "attendance_record": {
+                "log_id": str(row.log_id) if row.log_id else None,
+
+                # 1. Clean Presence tracking mapping (present / absent)
+                "presence_status": row.status if row.log_id else AttendanceStatus.ABSENT.value,
+
+                # 2. Clean Punctuality mapping (on_time / late / None if absent)
+                "punctuality_status": row.punctuality if row.log_id else None,
+
+                "time_in": row.time_in.isoformat() if row.time_in else None,
+                "time_out": row.time_out.isoformat() if row.time_out else None,
+                "time_in_method": row.time_in_method if row.time_in else None,
+                "time_out_method": row.time_out_method if row.time_out else None,
+                "clock_in_location": in_loc,
+                "clock_out_location": out_loc,
+                "duration_spent": f"{duration_minutes // 60}h {duration_minutes % 60}m" if duration_minutes is not None else None
+            }
+        })
+
+    return jsonify({
+        "status": "SUCCESS",
+        "code": 200,
+        "message": f"Attendance logs for range type '{range_type}' fetched successfully.",
+        "meta": {
+            "total_items": total_items,
+            "total_pages": total_pages,
+            "current_page": page,
+            "per_page": PER_PAGE,
+            "has_next": has_next,
+            "has_prev": has_prev,
+            "filtered_range": {
+                "start": start_filter.isoformat(),
+                "end": end_filter.isoformat()
+            }
+        },
+        "data": teachers_attendance_data
+    }), 200
+
+
+@attendance_bp.route("/stats", methods=['GET'])
+@limiter.limit('30 per minute')
+@jwt_required()
+@roles_required("Admin")
+def get_attendance_stats():
+    # 1. Coordinate localized Lagos timeline targets
+    lagos_tz = zoneinfo.ZoneInfo("Africa/Lagos")
+    now_lagos = datetime.now(lagos_tz)
+    today_lagos = now_lagos.date()
+
+    # 2. Extract and parse URL Date Range Filters
+    # options: today, yesterday, month, custom
+    range_type = request.args.get('range_type', 'today')
+
+    if range_type == 'yesterday':
+        start_filter = today_lagos - timedelta(days=1)
+        end_filter = today_lagos - timedelta(days=1)
+    elif range_type == 'month':
+        start_filter = today_lagos.replace(day=1)
+        end_filter = today_lagos
+    elif range_type == 'custom':
+        try:
+            start_filter = datetime.strptime(
+                request.args.get('start_date'), '%Y-%m-%d').date()
+            end_filter = datetime.strptime(
+                request.args.get('end_date'), '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            return jsonify({
+                "status": "ERROR",
+                "code": 400,
+                "message": "Invalid custom date format. Use YYYY-MM-DD"
+            }), 400
+    else:  # Default fallback option is always 'today'
+        start_filter = today_lagos
+        end_filter = today_lagos
+
+    # 2. Grab Total Unique Teachers registered in the system
+    total_teachers = db.session.execute(
+        db.select(func.count(Teacher.id))).scalar() or 0
+
+    if total_teachers == 0:
+        return jsonify({
+            "status": "NOT_FOUND",
+            "code": 404,
+            "message": "No stats for this range."
+        }), 404
+
+    stats_query = db.select(
+        func.count(AttendanceLog.id).label("total_present"),
+        func.sum(case((AttendanceLog.punctuality ==
+                 PunctualityStatus.LATE.value, 1), else_=0)).label("total_late"),
+        func.sum(case((AttendanceLog.punctuality ==
+                 PunctualityStatus.ON_TIME.value, 1), else_=0)).label("total_on_time")
+    ).join(Teacher).filter(cast(AttendanceLog.time_in, Date) == today_lagos)
+
+
+    stats_result = db.session.execute(stats_query).one()
+
+    # 3. Safely convert SQL None values to 0 if no records exist for the date range
+    present_count = int(stats_result.total_present or 0)
+    late_count = int(stats_result.total_late or 0)
+    on_time_count = int(stats_result.total_on_time or 0)
+    absent_count = max(0, total_teachers - present_count)  # Flawless math!
+
+    # 5. Build clean, unified response layout dictionary
+    stats_payload = {
+        "total_teachers": total_teachers,
+        "total_present": present_count,
+        "total_on_time": on_time_count,
+        "total_late": late_count,
+        "total_absent": absent_count
+    }
+
+    return jsonify({
+        "status": "SUCCESS",
+        "code": 200,
+        "message": f"Attendance summary stats for range '{range_type}' computed successfully.",
+        "meta": {
+            "filtered_range": {
+                "start": start_filter.isoformat(),
+                "end": end_filter.isoformat()
+            }
+        },
+        "data": stats_payload
+    }), 200

@@ -2,8 +2,10 @@
 
 from app import db
 from sqlalchemy.dialects.postgresql import UUID
-from app.utils.types import METHOD_CHOICES, STATUS_CHOICES
+from app.utils.types import METHOD_CHOICES, STATUS_CHOICES, PUNCTUALITY_CHOICES
 import uuid
+from datetime import datetime
+import zoneinfo
 
 
 class AttendanceLog(db.Model):
@@ -24,7 +26,8 @@ class AttendanceLog(db.Model):
     time_in = db.Column(
         db.DateTime(timezone=True),
         nullable=False,
-        server_default=db.text("TIMEZONE('Africa/Lagos', NOW())"),
+        # server_default=db.text("NOW()"),
+        default=lambda: datetime.now(zoneinfo.ZoneInfo("Africa/Lagos")),
         index=True  # 💡 Makes searching by clock-in date blazing fast!
     )
     time_out = db.Column(db.DateTime(timezone=True), nullable=True)
@@ -37,6 +40,13 @@ class AttendanceLog(db.Model):
         db.CheckConstraint(
             f"status IN ({STATUS_CHOICES})", name="valid_attendance_status"),
         nullable=False,
+    )
+    # Clean Timing Status (Calculated automatically at clock-in)
+    punctuality = db.Column(
+        db.String(20),
+        db.CheckConstraint(
+            f"punctuality IN ({PUNCTUALITY_CHOICES})", name="valid_punctuality_status"),
+        nullable=False
     )
     time_in_method = db.Column(
         db.String(20),

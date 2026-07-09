@@ -6,12 +6,18 @@ from enum import Enum
 class AttendanceStatus(Enum):
     ABSENT = "absent"
     PRESENT = "present"
+
+
+class PunctualityStatus(Enum):
+    ON_TIME = "on_time"
     LATE = "late"
     # EXCUSED = "excused"
 
-
 STATUS_CHOICES = ", ".join(
     f"'{status.value}'" for status in AttendanceStatus)
+
+PUNCTUALITY_CHOICES = ", ".join(
+    f"'{punctual.value}'" for punctual in PunctualityStatus)
 
 
 class AttendanceMethod(Enum):
