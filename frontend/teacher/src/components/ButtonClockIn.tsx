@@ -1,124 +1,113 @@
 import React, { useState } from "react";
+import { AxiosError } from "axios";
+import toast from "react-hot-toast";
+import api from "../utils/axiosConfig";
+
+type Action = "in" | "out";
+
+const getPosition = () =>
+  new Promise<GeolocationPosition>((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Browser does not support GPS."));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+    });
+  });
 
 export const ButtonClockIn: React.FC = () => {
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loadingAction, setLoadingAction] = useState<Action | null>(null);
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [success, setSuccess] = useState<boolean | null>(null);
 
-  const handleButtonClockIn = () => {
-    if (!navigator.geolocation) {
-      setStatusMessage("❌ Error: Browser does not support GPS.");
-      return;
-    }
-
-    setLoading(true);
+  const handleClock = async (action: Action) => {
+    setLoadingAction(action);
     setSuccess(null);
     setStatusMessage("Acquiring high-accuracy location...");
 
-    // 1. Grab coordinates instantly when clicked
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const payload = {
-          timeInLat: position.coords.latitude,
-          timeInLng: position.coords.longitude,
-        };
+    try {
+      const position = await getPosition();
+      const { latitude, longitude } = position.coords;
 
-        setStatusMessage("Verifying campus proximity with server...");
+      const payload =
+        action === "in"
+          ? { timeInLat: latitude, timeInLng: longitude }
+          : { timeOutLat: latitude, timeOutLng: longitude };
 
-        try {
-          // 2. Fire request directly to your button endpoint route
-          const response = await fetch("/api/v1/attendance/in", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payload),
-          });
+      setStatusMessage("Verifying campus proximity with server...");
+      const { data } = await api.post(`/attendance/${action}`, payload);
 
-          const data = await response.json();
-
-          if (response.ok) {
-            setSuccess(true);
-            setStatusMessage(
-              `✅ ${data.message || "Clocked in successfully!"}`,
-            );
-          } else {
-            setSuccess(false);
-            setStatusMessage(`❌ Failed: ${data.message || "Proximity error"}`);
-          }
-        } catch (error) {
-          setSuccess(false);
-          setStatusMessage(
-            "❌ Network error. Please verify server connection.",
-          );
-        } finally {
-          setLoading(false);
-        }
-      },
-      () => {
-        setSuccess(false);
-        setLoading(false);
+      setSuccess(true);
+      setStatusMessage(
+        `✅ ${data.message || (action === "in" ? "Clocked in successfully!" : "Clocked out successfully!")}`,
+      );
+    } catch (error) {
+      setSuccess(false);
+      if (error instanceof AxiosError) {
         setStatusMessage(
-          "❌ Error: Please grant GPS location access to clock in.",
+          `❌ ${error.response?.data?.message || "Request failed. Check your connection."}`,
         );
-      },
-      { enableHighAccuracy: true }, // Ensures highly accurate metrics for your 120m check
-    );
+      } else if (error instanceof GeolocationPositionError || error instanceof Error) {
+        setStatusMessage(`❌ ${error.message || "Please grant GPS access."}`);
+      } else {
+        setStatusMessage("❌ Something went wrong. Please try again.");
+      }
+      toast.error("Attendance action failed.");
+    } finally {
+      setLoadingAction(null);
+    }
   };
 
+  const busy = loadingAction !== null;
+
   return (
-    <div className="flex flex-col items-center justify-center p-6 max-w-sm mx-auto bg-white rounded-2xl shadow-xl border border-gray-100 mt-10">
-      <h2 className="text-xl font-bold text-gray-800 text-center mb-1">
-        School Attendance
+    <div className="mx-auto flex max-w-sm flex-col items-center justify-center rounded-2xl bg-white p-6">
+      <h2 className="mb-1 text-center text-xl font-bold text-gray-800">
+        Button Attendance
       </h2>
-      <p className="text-xs text-gray-500 mb-8 text-center">
+      <p className="mb-8 text-center text-xs text-gray-500">
         Make sure you are physically within the school premises boundaries.
       </p>
 
-      {/* 3. The Interactive Big Circle Button Container */}
-      <div className="relative flex items-center justify-center w-52 h-52">
-        {/* Pulsing Outer Ring (Animating when idle) */}
-        {!loading && !success && (
-          <div className="absolute inset-0 rounded-full bg-blue-400/20 animate-ping pointer-events-none"></div>
+      <div className="relative flex h-52 w-52 items-center justify-center">
+        {!busy && success !== true && (
+          <div className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-blue-400/20" />
         )}
 
         <button
-          onClick={handleButtonClockIn}
-          disabled={loading}
-          className={`w-48 h-48 rounded-full font-bold text-lg tracking-wide transition-all shadow-xl flex items-center justify-center border-4 text-center p-4 select-none ${
-            loading
-              ? "bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed animate-pulse"
+          onClick={() => handleClock("in")}
+          disabled={busy}
+          className={`flex h-48 w-48 select-none items-center justify-center rounded-full border-4 p-4 text-center text-lg font-bold tracking-wide shadow-xl transition-all ${
+            loadingAction === "in"
+              ? "animate-pulse cursor-not-allowed border-gray-300 bg-gray-100 text-gray-400"
               : success === true
-                ? "bg-emerald-500 border-emerald-600 text-white shadow-emerald-200 active:scale-95"
+                ? "border-emerald-600 bg-emerald-500 text-white shadow-emerald-200 active:scale-95"
                 : success === false
-                  ? "bg-red-500 border-red-600 text-white shadow-red-200 active:scale-95"
-                  : "bg-blue-600 border-blue-700 text-white hover:bg-blue-700 shadow-blue-200 active:scale-95 hover:shadow-2xl"
+                  ? "border-red-600 bg-red-500 text-white shadow-red-200 active:scale-95"
+                  : "border-blue-700 bg-blue-600 text-white shadow-blue-200 hover:bg-blue-700 hover:shadow-2xl active:scale-95"
           }`}
         >
-          {loading ? (
-            <div className="flex flex-col items-center gap-1">
-              <span className="text-xs font-normal">Processing</span>
-              <span className="text-sm font-semibold">Please Wait...</span>
-            </div>
-          ) : success === true ? (
-            "Clocked In! 🎉"
-          ) : success === false ? (
-            "Try Again 🔄"
-          ) : (
-            "Click to Clock-in"
-          )}
+          {loadingAction === "in" ? "Processing..." : "Click to Clock-in"}
         </button>
       </div>
 
-      {/* 4. Real-time Status Log Outputs */}
+      <button
+        onClick={() => handleClock("out")}
+        disabled={busy}
+        className="mt-8 w-full rounded-xl border border-gray-200 bg-white py-3 font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {loadingAction === "out" ? "Processing..." : "Clock Out"}
+      </button>
+
       {statusMessage && (
         <div
-          className={`mt-8 w-full p-3 rounded-xl border text-sm font-semibold text-center transition-all ${
+          className={`mt-6 w-full rounded-xl border p-3 text-center text-sm font-semibold transition-all ${
             success === true
-              ? "bg-emerald-50 border-emerald-100 text-emerald-800"
+              ? "border-emerald-100 bg-emerald-50 text-emerald-800"
               : success === false
-                ? "bg-red-50 border-red-100 text-red-800"
-                : "bg-gray-50 border-gray-100 text-gray-700"
+                ? "border-red-100 bg-red-50 text-red-800"
+                : "border-gray-100 bg-gray-50 text-gray-700"
           }`}
         >
           {statusMessage}

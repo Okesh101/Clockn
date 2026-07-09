@@ -6,117 +6,100 @@ import {
   useContext,
   type ReactNode,
 } from "react";
-import type { Teacher, AuthResponse } from "../types";
+import type { AuthResponse, RegisterPayload, Teacher } from "../types";
 import api from "../utils/axiosConfig";
 import toast from "react-hot-toast";
 
 interface AuthContextType {
   teacher: Teacher | null;
-  isLoading: boolean;
+  isAuthenticated: boolean;
+  loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (data: SignupData) => Promise<void>;
-  logout: () => void;
-  updateTeacher: (teacher: Teacher) => void;
-  fetchMe: () => Promise<void>;
-}
-
-interface SignupData {
-  email: string;
-  phone: string;
-  password: string;
-  firstname: string;
-  lastname: string;
+  register: (payload: RegisterPayload) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({
-  children,
-}) => {
+const errorMessage = (error: unknown, fallback: string): string => {
+  if (typeof error === "object" && error !== null) {
+    const maybeAxios = error as {
+      response?: { data?: { message?: string } };
+      message?: string;
+    };
+    return maybeAxios.response?.data?.message || maybeAxios.message || fallback;
+  }
+  return fallback;
+};
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [teacher, setTeacher] = useState<Teacher | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const fetchMe = async () => {
-    try {
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
-      const response = await api.get("/auth/profile");
-      if (response.data.status === "SUCCESS") {
-        const teacherData = {
-          ...response.data.data,
-          created_at: response.data.data.created_at || new Date().toISOString(),
-        };
-        setTeacher(teacherData);
-        localStorage.setItem("teacher", JSON.stringify(teacherData));
-      }
-    } catch (error) {
-      console.error("Failed to fetch teacher:", error);
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      localStorage.removeItem("teacher");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [loading, setLoading] = useState(
+    () => !!localStorage.getItem("access_token"),
+  );
 
   useEffect(() => {
-    fetchMe();
-
-    // Listen for logout events from axios interceptor
-    const handleLogout = () => {
-      setTeacher(null);
-    };
-
+    const handleLogout = () => setTeacher(null);
     window.addEventListener("auth:logout", handleLogout);
+
+    let active = true;
+    const token = localStorage.getItem("access_token");
+
+    if (token) {
+      (async () => {
+        try {
+          const { data } = await api.get("/auth/profile");
+          if (!active) return;
+          const profile = data.data as Teacher;
+          setTeacher(profile);
+          localStorage.setItem("teacher", JSON.stringify(profile));
+        } catch (error) {
+          console.error("Failed to hydrate teacher profile:", error);
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+          localStorage.removeItem("teacher");
+          if (active) setTeacher(null);
+        } finally {
+          if (active) setLoading(false);
+        }
+      })();
+    }
+
     return () => {
+      active = false;
       window.removeEventListener("auth:logout", handleLogout);
     };
   }, []);
 
+  const persistSession = (payload: AuthResponse) => {
+    localStorage.setItem("access_token", payload.access_token);
+    localStorage.setItem("refresh_token", payload.refresh_token);
+    localStorage.setItem("teacher", JSON.stringify(payload.teacher));
+    setTeacher(payload.teacher);
+  };
+
   const login = async (email: string, password: string) => {
     try {
-      const response = await api.post<AuthResponse>("/auth/login", {
+      const { data } = await api.post<AuthResponse>("/auth/login", {
         email,
         password,
       });
-
-      if (response.data.status !== "SUCCESS") {
-        throw new Error(response.data.message || "Login failed");
-      }
-
-      const { access_token, refresh_token, teacher } = response.data;
-      localStorage.setItem("access_token", access_token);
-      localStorage.setItem("refresh_token", refresh_token);
-      localStorage.setItem("teacher", JSON.stringify(teacher));
-      setTeacher(teacher);
-      toast.success(`Welcome back, ${teacher.firstname}!`);
-    } catch (error: any) {
-      const message =
-        error.response?.data?.message || error.message || "Login failed";
+      persistSession(data);
+      toast.success(`Welcome back, ${data.teacher.firstname}!`);
+    } catch (error) {
+      const message = errorMessage(error, "Login failed");
       toast.error(message);
       throw error;
     }
   };
 
-  const signup = async (data: SignupData) => {
+  const register = async (payload: RegisterPayload) => {
     try {
-      const signupResponse = await api.post("/auth/register", data);
-      if (
-        signupResponse.data.status !== "CREATED" &&
-        signupResponse.data.status !== "SUCCESS"
-      ) {
-        throw new Error(signupResponse.data.message || "Signup failed");
-      }
-
-      await login(data.email, data.password);
+      await api.post("/auth/register", payload);
+      await login(payload.email, payload.password);
       toast.success("Account created successfully!");
-    } catch (error: any) {
-      const message =
-        error.response?.data?.message || error.message || "Signup failed";
+    } catch (error) {
+      const message = errorMessage(error, "Registration failed");
       toast.error(message);
       throw error;
     }
@@ -124,32 +107,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const logout = async () => {
     try {
-      await api.post("/auth/logout");
+      const refreshToken = localStorage.getItem("refresh_token");
+      await api.post(
+        "/auth/logout",
+        {},
+        refreshToken ? { headers: { "X-Refresh-Token": refreshToken } } : {},
+      );
     } catch (error) {
-      console.log("Logout error (ignored):", error);
+      console.warn("Logout request failed (ignored):", error);
+    } finally {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("teacher");
+      setTeacher(null);
+      toast.success("Logged out successfully!");
     }
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("teacher");
-    setTeacher(null);
-    toast.success("Logged out successfully!");
-  };
-
-  const updateTeacher = (updatedTeacher: Teacher) => {
-    setTeacher(updatedTeacher);
-    localStorage.setItem("teacher", JSON.stringify(updatedTeacher));
   };
 
   return (
     <AuthContext.Provider
       value={{
         teacher,
-        isLoading,
+        isAuthenticated: !!teacher,
+        loading,
         login,
-        signup,
+        register,
         logout,
-        updateTeacher,
-        fetchMe,
       }}
     >
       {children}
@@ -157,10 +140,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
