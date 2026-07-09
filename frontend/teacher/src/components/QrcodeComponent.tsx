@@ -1,33 +1,76 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
+import { AxiosError } from "axios";
+import toast from "react-hot-toast";
+import api from "../utils/axiosConfig";
 
-interface ClockInPayload {
-  qrString: string;
-  lat: number;
-  lng: number;
-}
+type QrAction = "in" | "out";
+
+const getPosition = () =>
+  new Promise<GeolocationPosition>((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Your browser does not support GPS tracking."));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+    });
+  });
 
 export const QrClockIn: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [action, setAction] = useState<QrAction>("in");
 
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
     return () => {
-      // Force kill the camera tracking if the user navigates away mid-scan
       if (qrScannerRef.current && qrScannerRef.current.isScanning) {
         qrScannerRef.current.stop().catch((err) => console.error(err));
       }
     };
   }, []);
 
-  const startInstantScanner = async () => {
+  const submitScan = async (qrString: string, mode: QrAction) => {
+    setIsSubmitting(true);
+    try {
+      setStatusMessage("QR detected! Fetching GPS location...");
+      const position = await getPosition();
+      const { latitude, longitude } = position.coords;
+
+      const payload =
+        mode === "in"
+          ? { qrString, timeInLat: latitude, timeInLng: longitude }
+          : { qrString, timeOutLat: latitude, timeOutLng: longitude };
+
+      setStatusMessage("Sending clock-in data to server...");
+      const { data } = await api.post(`/attendance/qr/${mode}`, payload);
+      setStatusMessage(
+        `✅ ${data.message || (mode === "in" ? "Clock-in successful!" : "Clock-out successful!")}`,
+      );
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        setStatusMessage(
+          `❌ ${error.response?.data?.message || "Server error. Please try again."}`,
+        );
+      } else if (error instanceof Error) {
+        setStatusMessage(`❌ ${error.message}`);
+      } else {
+        setStatusMessage("❌ Network error. Please try again.");
+      }
+      toast.error("QR attendance failed.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const startScanner = async (mode: QrAction) => {
+    setAction(mode);
     setIsScanning(true);
     setStatusMessage("Opening camera...");
 
-    // Wait a brief tick for the modal element to inject into the DOM
     setTimeout(async () => {
       try {
         const html5QrCode = new Html5Qrcode("reader");
@@ -37,15 +80,11 @@ export const QrClockIn: React.FC = () => {
           { facingMode: "environment" },
           { fps: 10, qrbox: { width: 250, height: 250 } },
           (decodedText) => {
-            setStatusMessage("QR detected! Fetching GPS location...");
-
-            // 1. Instantly shut off the camera stream and close the modal overlay
             html5QrCode
               .stop()
               .then(() => {
                 setIsScanning(false);
-                setIsSubmitting(true); // Disable the main trigger button during processing
-                getUserGpsAndSubmit(decodedText);
+                submitScan(decodedText, mode);
               })
               .catch((err) => console.error(err));
           },
@@ -68,85 +107,50 @@ export const QrClockIn: React.FC = () => {
     setStatusMessage("Scan cancelled.");
   };
 
-  const getUserGpsAndSubmit = (qrStringID: string) => {
-    if (!navigator.geolocation) {
-      setStatusMessage("Error: Your browser does not support GPS tracking.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const payload: ClockInPayload = {
-          qrString: qrStringID,
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-
-        setStatusMessage("Sending clock-in data to server...");
-
-        try {
-          const response = await fetch("/api/v1/qrcode/test", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-
-          const data = await response.json();
-
-          if (response.ok) {
-            setStatusMessage("✅ Clock-in successful!");
-          } else {
-            setStatusMessage(`❌ Failed: ${data.message || "Server error"}`);
-          }
-        } catch (error) {
-          setStatusMessage("❌ Network error. Please try again.");
-        } finally {
-          setIsSubmitting(false); // Enable the action button again once response returns
-        }
-      },
-      () => {
-        setStatusMessage("❌ Error: You must allow GPS access to clock in.");
-        setIsSubmitting(false);
-      },
-    );
-  };
+  const busy = isScanning || isSubmitting;
 
   return (
-    <div className="p-5 text-center max-w-md mx-auto">
-      <h2 className="text-xl font-bold mb-4">Attendance Clock-In</h2>
+    <div className="mx-auto max-w-md p-5 text-center">
+      <h2 className="mb-4 text-xl font-bold text-gray-800">QR Attendance</h2>
 
-      {/* Main Trigger Button: Disabled when scanning or fetching location API responses */}
-      <button
-        onClick={startInstantScanner}
-        disabled={isScanning || isSubmitting}
-        className={`px-6 py-3 font-semibold rounded-lg shadow-md transition-all ${
-          isSubmitting || isScanning
-            ? "bg-gray-400 text-gray-200 cursor-not-allowed"
-            : "bg-blue-600 text-white hover:bg-blue-700 active:scale-95"
-        }`}
-      >
-        {isSubmitting ? "Processing..." : "Scan to Clock In"}
-      </button>
+      <div className="flex flex-col gap-3">
+        <button
+          onClick={() => startScanner("in")}
+          disabled={busy}
+          className={`rounded-lg px-6 py-3 font-semibold shadow-md transition-all ${
+            busy
+              ? "cursor-not-allowed bg-gray-400 text-gray-200"
+              : "bg-blue-600 text-white hover:bg-blue-700 active:scale-95"
+          }`}
+        >
+          {isSubmitting && action === "in" ? "Processing..." : "Scan to Clock In"}
+        </button>
+        <button
+          onClick={() => startScanner("out")}
+          disabled={busy}
+          className={`rounded-lg border px-6 py-3 font-semibold transition-all ${
+            busy
+              ? "cursor-not-allowed border-gray-200 text-gray-300"
+              : "border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95"
+          }`}
+        >
+          {isSubmitting && action === "out" ? "Processing..." : "Scan to Clock Out"}
+        </button>
+      </div>
 
-      {/* Popup Modal Base */}
       {isScanning && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 p-4 transition-opacity">
-          <div className="bg-white rounded-xl p-5 w-full max-w-sm flex flex-col items-center relative shadow-2xl">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+          <div className="relative flex w-full max-w-sm flex-col items-center rounded-xl bg-white p-5 shadow-2xl">
+            <h3 className="mb-2 text-lg font-semibold text-gray-800">
               Scan Attendance QR Code
             </h3>
-
-            {/* The active camera box inside our frame structure */}
             <div
               id="reader"
-              className="w-full h-110 aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-dashed border-gray-300"
-            ></div>
-
-            {/* Manual exit option */}
+              className="aspect-square w-full overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-100"
+            />
             <button
               onClick={closeScannerManually}
-              className="mt-4 px-4 py-2 bg-red-100 text-red-600 font-medium rounded-md hover:bg-red-200"
+              className="mt-4 rounded-md bg-red-100 px-4 py-2 font-medium text-red-600 hover:bg-red-200"
             >
               Cancel
             </button>
@@ -154,9 +158,8 @@ export const QrClockIn: React.FC = () => {
         </div>
       )}
 
-      {/* Real-time workflow notifications */}
       {statusMessage && (
-        <p className="mt-5 font-bold text-base text-gray-700 tracking-wide bg-gray-50 p-3 rounded-lg border border-gray-100">
+        <p className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-3 text-base font-bold tracking-wide text-gray-700">
           {statusMessage}
         </p>
       )}
