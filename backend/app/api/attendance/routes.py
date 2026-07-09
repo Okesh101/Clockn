@@ -671,6 +671,12 @@ def get_attendance_stats():
         start_filter = today_lagos
         end_filter = today_lagos
 
+    # 💡 FIX: Build explicit, fully aware datetime boundaries (From 12:00:00 AM to 11:59:59 PM Lagos time)
+    start_datetime = datetime.combine(
+        start_filter, time.min).replace(tzinfo=lagos_tz)
+    end_datetime = datetime.combine(
+        end_filter, time.max).replace(tzinfo=lagos_tz)
+
     # 2. Grab Total Unique Teachers registered in the system
     total_teachers = db.session.execute(
         db.select(func.count(Teacher.id))).scalar() or 0
@@ -682,14 +688,18 @@ def get_attendance_stats():
             "message": "No stats for this range."
         }), 404
 
+        # 💡 FIX: Use the start_datetime and end_datetime variables you built!
     stats_query = db.select(
         func.count(AttendanceLog.id).label("total_present"),
         func.sum(case((AttendanceLog.punctuality ==
                  PunctualityStatus.LATE.value, 1), else_=0)).label("total_late"),
         func.sum(case((AttendanceLog.punctuality ==
                  PunctualityStatus.ON_TIME.value, 1), else_=0)).label("total_on_time")
-    ).join(Teacher).filter(cast(AttendanceLog.time_in, Date) == today_lagos)
-
+    ).filter(
+        # This securely intercepts and uses your dynamic calendar range parameters
+        AttendanceLog.time_in >= start_datetime,
+        AttendanceLog.time_in <= end_datetime
+    )
 
     stats_result = db.session.execute(stats_query).one()
 
@@ -697,7 +707,13 @@ def get_attendance_stats():
     present_count = int(stats_result.total_present or 0)
     late_count = int(stats_result.total_late or 0)
     on_time_count = int(stats_result.total_on_time or 0)
-    absent_count = max(0, total_teachers - present_count)  # Flawless math!
+
+    # 💡 FIX: Absent math is only valid for a single target day (Today or Yesterday).
+    # For a multi-day range, total records can easily exceed total teachers.
+    if start_filter == end_filter:
+        absent_count = max(0, total_teachers - present_count)
+    else:
+        absent_count = 0  # Default to 0 for historical range overviews
 
     # 5. Build clean, unified response layout dictionary
     stats_payload = {
