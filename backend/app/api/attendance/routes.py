@@ -9,7 +9,7 @@ from app.models.AttendanceLog import AttendanceLog
 from app.models.QrLocation import QrLocation
 from datetime import datetime, time
 import zoneinfo
-from app.utils.types import AttendanceStatus, AttendanceMethod, SCHOOL_COORDINATES, TEACHER_QR_DISTANCE_THRESHOLD_M, TEACHER_DISTANCE_THRESHOLD_M
+from app.utils.types import AttendanceStatus, AttendanceMethod, DIST_THRESHOLD, CutoffTime
 from app.utils.extensions import calculate_teacher_distance
 
 attendance_bp = Blueprint("attendance", __name__)
@@ -62,18 +62,17 @@ def button_clock_in_endpoint():
         }), 400
 
     # Calculate teacher distance from the mid-point of school and reject far distances
-    teacher_distance_m = calculate_teacher_distance(
-        teacher_lat, teacher_lng, SCHOOL_COORDINATES, "button")
+    teacher_distance_m = calculate_teacher_distance(teacher_lat, teacher_lng)
 
-    if teacher_distance_m > TEACHER_DISTANCE_THRESHOLD_M:
+    if teacher_distance_m > DIST_THRESHOLD.BTN.value:
         return jsonify({
             "status": "ERROR",
             "code": 400,
-            "message": f"Can't clock in. You are {int(teacher_distance_m)}m away from school environment."
+            "message": f"Can't clock in. You are {int(teacher_distance_m - DIST_THRESHOLD.BTN.value)}m away from school environment."
         }), 400
 
     # Fixed Time Check Comparison Logic
-    cutoff_time = time(8, 30)  # 8:30 AM
+    cutoff_time = time(CutoffTime.A_HR.value, CutoffTime.A_MIN.value)
     current_time_only = now_lagos.time()
 
     if current_time_only > cutoff_time:
@@ -98,7 +97,7 @@ def button_clock_in_endpoint():
             "message": f"Clock-in successful. Status: {current_status}.",
             "data": {
                 "attendance_log_id": str(new_log.id),
-                "distance": int(teacher_distance_m),
+                "distance": int(DIST_THRESHOLD.BTN.value - teacher_distance_m),
                 "status": new_log.status
             }
         }), 201
@@ -173,15 +172,15 @@ def qr_clock_in_endpoint():
     teacher_distance_m = calculate_teacher_distance(
         teacher_lat, teacher_lng, qr_obj, "qr")
 
-    if teacher_distance_m > TEACHER_QR_DISTANCE_THRESHOLD_M:
+    if teacher_distance_m > DIST_THRESHOLD.QR.value:
         return jsonify({
             "status": "ERROR",
             "code": 400,
-            "message": f"Can't clock in. You are {int(teacher_distance_m)}m away from this qr code."
+            "message": f"Can't clock in. You are {int(teacher_distance_m - DIST_THRESHOLD.QR.value)}m away from this qr code."
         }), 200
 
     # Fixed Time Check Comparison Logic
-    cutoff_time = time(8, 30)  # 8:30 AM
+    cutoff_time = time(CutoffTime.A_HR.value, CutoffTime.A_MIN.value)
     current_time_only = now_lagos.time()
 
     if current_time_only > cutoff_time:
@@ -207,7 +206,7 @@ def qr_clock_in_endpoint():
             "message": f"Clock-in successful. Status: {current_status}.",
             "data": {
                 "attendance_log_id": str(new_log.id),
-                "distance": int(teacher_distance_m),
+                "distance": int(DIST_THRESHOLD.QR.value - teacher_distance_m),
                 "status": new_log.status
             }
         }), 201
@@ -276,18 +275,17 @@ def button_clock_out_endpoint():
         }), 400
 
     # Calculate teacher distance from the mid-point of school and reject far distances
-    teacher_distance_m = calculate_teacher_distance(
-        teacher_lat, teacher_lng, SCHOOL_COORDINATES, "button")
+    teacher_distance_m = calculate_teacher_distance(teacher_lat, teacher_lng)
 
-    if teacher_distance_m > TEACHER_DISTANCE_THRESHOLD_M:
+    if teacher_distance_m > DIST_THRESHOLD.BTN.value:
         return jsonify({
             "status": "ERROR",
             "code": 400,
-            "message": f"Can't clock out. You are {int(teacher_distance_m)}m away from school premises."
+            "message": f"Can't clock out. You are {int(teacher_distance_m - DIST_THRESHOLD.BTN.value)}m away from school premises."
         }), 400
 
     # Fixed Time Check Comparison Logic
-    cutoff_time = time(16, 0)  # 4:00 PM
+    cutoff_time = time(CutoffTime.C_HR.value, CutoffTime.C_MIN.value)
     current_time_only = now_lagos.time()
 
     if current_time_only < cutoff_time:
@@ -314,7 +312,7 @@ def button_clock_out_endpoint():
             "message": f"Clock-out successful. Have a safe trip home!",
             "data": {
                 "attendance_log_id": str(active_log.id),
-                "distance": int(teacher_distance_m),
+                "distance": int(DIST_THRESHOLD.BTN.value - teacher_distance_m),
                 "time_out": active_log.time_out.isoformat()
             }
         }), 200
@@ -400,15 +398,15 @@ def qr_clock_out_endpoint():
     teacher_distance_m = calculate_teacher_distance(
         teacher_lat, teacher_lng, qr_obj, "qr")
 
-    if teacher_distance_m > TEACHER_QR_DISTANCE_THRESHOLD_M:
+    if teacher_distance_m > DIST_THRESHOLD.QR.value:
         return jsonify({
             "status": "ERROR",
             "code": 400,
-            "message": f"Can't clock out. You are {int(teacher_distance_m)}m away from school premises."
+            "message": f"Can't clock out. You are {int(teacher_distance_m - DIST_THRESHOLD.QR.value)}m away from school premises."
         }), 400
 
     # Fixed Time Check Comparison Logic
-    cutoff_time = time(16, 0)  # 4:00 PM
+    cutoff_time = time(CutoffTime.C_HR.value, CutoffTime.C_MIN.value)
     current_time_only = now_lagos.time()
 
     if current_time_only < cutoff_time:
@@ -436,7 +434,7 @@ def qr_clock_out_endpoint():
             "message": f"Clock-out successful. Have a safe trip home!",
             "data": {
                 "attendance_log_id": str(active_log.id),
-                "distance": int(teacher_distance_m),
+                "distance": int(DIST_THRESHOLD.QR.value - teacher_distance_m),
                 "time_out": active_log.time_out.isoformat()
             }
         }), 200

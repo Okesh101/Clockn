@@ -1,5 +1,7 @@
 # app/utils/extensions.py
 
+from app.utils.types import SCHOOL_COORDS
+
 def calculate_distance(lat1, lng1, lat2, lng2):
     import math
     # Convert degrees to radians
@@ -23,12 +25,12 @@ def calculate_distance(lat1, lng1, lat2, lng2):
     return EARTH_RADIUS_METERS * c
 
 
-def calculate_teacher_distance(teacher_lat, teacher_lng, obj, method):
+def calculate_teacher_distance(teacher_lat, teacher_lng, coords={}, method=""):
     if method.lower() == 'qr':
-        lat = float(obj.get("latitude"))
-        lng = float(obj.get("longitude"))
+        lat = float(coords.get("latitutde"))
+        lng = float(coords.get("longitude"))
     else:
-        lat = float(obj.get("latitude"))
-        lng = float(obj.get("longitude"))
+        lat = float(SCHOOL_COORDS.LAT.value)
+        lng = float(SCHOOL_COORDS.LNG.value)
 
     return calculate_distance(teacher_lat, teacher_lng, lat, lng)

@@ -55,11 +55,11 @@ def seed_roles_endpoint():
         }), 500
     
 
-# api/v1/roles/upgrade
-@roles_bp.route("/upgrade", methods=["POST"])
+# api/v1/roles/assign
+@roles_bp.route("/assign", methods=["POST"])
 @limiter.limit('5 per minute')
 @jwt_required()
-@roles_required("Admin")  # Only Admins can upgrade roles
+@roles_required("Admin")  # Only Admins can assign roles
 def upgrade_roles_endpoint():
     # request = teacher_id: string, roles: list
     current_admin_id = get_jwt_identity()  # Get the identity of the current admin user

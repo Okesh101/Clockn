@@ -2,6 +2,7 @@
 
 from enum import Enum
 
+
 class AttendanceStatus(Enum):
     ABSENT = "absent"
     PRESENT = "present"
@@ -22,10 +23,19 @@ METHOD_CHOICES = ", ".join(
     f"'{method.value}'" for method in AttendanceMethod)
 
 
-SCHOOL_COORDINATES = {
-    "latitude": 6.534583,
-    "longitude": 3.388638,
-}
+class SCHOOL_COORDS(Enum):
+    LAT = 6.533134
+    LNG = 3.387837
 
-TEACHER_DISTANCE_THRESHOLD_M = 300.0
-TEACHER_QR_DISTANCE_THRESHOLD_M = 30.0
+class DIST_THRESHOLD(Enum):
+    QR = 30.0
+    BTN = 105.0
+
+
+class CutoffTime(Enum):
+    # 8:05 AM
+    A_HR = 8
+    A_MIN = 5
+    # 4:00 PM
+    C_HR = 16
+    C_MIN = 00
