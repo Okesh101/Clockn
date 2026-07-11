@@ -4,6 +4,7 @@ import { Toaster } from "react-hot-toast";
 import { ProtectedRoute } from "./components/Auth/ProtectedRoute";
 import { Dashboard } from "./pages/Dashboard";
 import { History } from "./pages/History";
+import { Profile } from "./pages/Profile";
 import { NotFound } from "./pages/NotFound";
 import { AuthPage } from "./pages/Auth";
 // import { AuthPage } from "./pages/AuthPage";
@@ -42,6 +43,14 @@ function App() {
           element={
             <ProtectedRoute>
               <History />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
             </ProtectedRoute>
           }
         />

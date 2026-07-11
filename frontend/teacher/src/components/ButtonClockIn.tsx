@@ -72,40 +72,27 @@ export function ButtonClockIn({ action, label }: ButtonClockInProps) {
     }
   };
 
-  const ringClass = isClockIn
-    ? "border-[#0B2545] shadow-[#0B2545]/25"
-    : "border-amber-600 shadow-amber-500/25";
-
   const buttonClass = isClockIn
-    ? "bg-[#0B2545] hover:bg-[#12345c]"
-    : "bg-amber-600 hover:bg-amber-700";
+    ? "bg-[#0B2545] shadow-[0_20px_50px_-16px_rgba(11,37,69,0.55)] hover:bg-[#12345c]"
+    : "bg-amber-600 shadow-[0_20px_50px_-16px_rgba(217,119,6,0.45)] hover:bg-amber-700";
+
+  const ringClass = isClockIn
+    ? "ring-[#0B2545]/20"
+    : "ring-amber-500/25";
 
   return (
     <div className="flex flex-col items-center">
-      <div className="relative flex h-[min(72vw,17rem)] w-[min(72vw,17rem)] items-center justify-center">
-        {state === "idle" && (
-          <>
-            <span
-              aria-hidden
-              className={`absolute inset-0 animate-ping rounded-full border-2 opacity-20 ${ringClass}`}
-            />
-            <span
-              aria-hidden
-              className={`absolute inset-3 animate-pulse rounded-full border opacity-30 ${ringClass}`}
-            />
-          </>
-        )}
-
+      <div className="flex h-60 w-60 shrink-0 items-center justify-center sm:h-64 sm:w-64">
         <button
           type="button"
           onClick={handleClock}
           disabled={busy}
           aria-label={label}
-          className={`relative z-10 flex h-[min(64vw,15rem)] w-[min(64vw,15rem)] select-none flex-col items-center justify-center rounded-full border-4 border-white/20 text-center text-white shadow-2xl transition-all duration-200 active:scale-[0.97] disabled:cursor-not-allowed ${buttonClass} ${
+          className={`flex h-52 w-52 shrink-0 select-none flex-col items-center justify-center rounded-full border-4 border-white/25 text-center text-white ring-8 transition-[transform,background-color,box-shadow] duration-200 active:scale-[0.97] disabled:cursor-not-allowed sm:h-56 sm:w-56 ${ringClass} ${buttonClass} ${
             state === "success"
-              ? "!bg-emerald-600 !shadow-emerald-500/30"
+              ? "!bg-emerald-600 !shadow-[0_20px_50px_-16px_rgba(5,150,105,0.45)] !ring-emerald-500/25"
               : state === "error"
-                ? "!bg-red-600 !shadow-red-500/30"
+                ? "!bg-red-600 !shadow-[0_20px_50px_-16px_rgba(220,38,38,0.45)] !ring-red-500/25"
                 : ""
           }`}
         >
@@ -122,7 +109,7 @@ export function ButtonClockIn({ action, label }: ButtonClockInProps) {
               </span>
             </>
           ) : (
-            <span className="px-6 text-base font-bold uppercase leading-snug tracking-wide sm:text-lg">
+            <span className="px-5 text-base font-bold uppercase leading-snug tracking-wide sm:text-lg">
               {label}
             </span>
           )}
@@ -132,7 +119,7 @@ export function ButtonClockIn({ action, label }: ButtonClockInProps) {
       {message && (
         <p
           role="status"
-          className={`mt-5 max-w-xs text-center text-sm font-medium ${
+          className={`mt-5 max-w-sm text-center text-sm font-medium ${
             state === "success"
               ? "text-emerald-700"
               : state === "error"

@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { AxiosError } from "axios";
 import {
-  ArrowLeft,
   CalendarDays,
   Clock3,
   Loader2,
   MapPin,
   RefreshCw,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { DashboardLayout } from "../components/dashboard/DashboardLayout";
 import { useAuth } from "../contexts/AuthContext";
@@ -162,18 +161,9 @@ export function History() {
       onMenuClose={() => setMenuOpen(false)}
       onLogout={handleLogout}
     >
-      <div className="mb-5 flex items-center gap-3">
-        <Link
-          to="/"
-          className="flex h-10 w-10 items-center justify-center rounded-xl text-[#0B2545] transition hover:bg-white active:scale-95"
-          aria-label="Back to dashboard"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div>
-          <h2 className="text-xl font-bold text-[#0B2545]">History</h2>
-          <p className="text-xs text-slate-500">Your attendance records</p>
-        </div>
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-[#0B2545]">History</h2>
+        <p className="mt-1 text-sm text-slate-500">Your attendance records</p>
       </div>
 
       <div className="mb-4 flex items-center gap-2">
