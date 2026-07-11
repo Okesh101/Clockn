@@ -1,15 +1,23 @@
 import { useEffect, useState } from "react";
 
-function formatHeaderTime(date: Date) {
+function formatClock(date: Date) {
   let hours = date.getHours();
   const minutes = String(date.getMinutes()).padStart(2, "0");
   const seconds = String(date.getSeconds()).padStart(2, "0");
   const period = hours >= 12 ? "PM" : "AM";
   hours = hours % 12 || 12;
+
+  const weekday = date.toLocaleDateString([], { weekday: "short" });
+  const day = date.getDate();
+  const month = date.toLocaleDateString([], { month: "short" });
+  const year = date.getFullYear();
+
   return {
-    time: `${hours}:${minutes}`,
+    hours: String(hours),
+    minutes,
     seconds,
     period,
+    dateLabel: `${weekday}, ${day} ${month} ${year}`,
     full: `${hours}:${minutes}:${seconds} ${period}`,
   };
 }
@@ -24,6 +32,6 @@ export function useLiveClock() {
 
   return {
     now,
-    ...formatHeaderTime(now),
+    ...formatClock(now),
   };
 }

@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { AxiosError } from "axios";
-import { Camera, Loader2, ScanLine, X } from "lucide-react";
+import {
+  ChevronRight,
+  Loader2,
+  QrCode,
+  ScanLine,
+  Sparkles,
+  X,
+} from "lucide-react";
 import toast from "react-hot-toast";
 
 import type { AttendanceAction } from "../hooks/useAttendanceMode";
@@ -109,42 +116,69 @@ export function QrClockIn({ action, label }: QrClockInProps) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={startScanner}
-        disabled={busy}
-        className={`flex w-full max-w-sm items-center justify-center gap-2.5 rounded-2xl px-6 py-4 text-sm font-bold shadow-lg transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${
-          isClockIn
-            ? "bg-white text-[#0B2545] ring-1 ring-slate-200 hover:bg-slate-50"
-            : "bg-amber-50 text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100"
-        }`}
-      >
-        {isSubmitting ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Processing…
-          </>
-        ) : (
-          <>
-            {isClockIn ? (
-              <Camera className="h-4 w-4" />
-            ) : (
-              <ScanLine className="h-4 w-4" />
-            )}
-            {label}
-          </>
-        )}
-      </button>
+      <div className="w-full max-w-md">
+        <p className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-[#0B2545]/45">
+          Or use QR
+        </p>
+
+        <button
+          type="button"
+          onClick={startScanner}
+          disabled={busy}
+          className={`group relative w-full overflow-hidden rounded-2xl p-[1.5px] shadow-lg transition-all hover:shadow-xl active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 ${
+            isClockIn
+              ? "bg-gradient-to-r from-[#0B2545] via-[#12345c] to-emerald-700"
+              : "bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600"
+          }`}
+        >
+          <div className="flex items-center gap-4 rounded-[14px] bg-white px-5 py-4 sm:px-6 sm:py-5">
+            <div
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
+                isClockIn
+                  ? "bg-[#0B2545]/10 text-[#0B2545]"
+                  : "bg-amber-100 text-amber-800"
+              }`}
+            >
+              {isClockIn ? (
+                <QrCode className="h-6 w-6" strokeWidth={2.2} />
+              ) : (
+                <ScanLine className="h-6 w-6" strokeWidth={2.2} />
+              )}
+            </div>
+
+            <div className="min-w-0 flex-1 text-left">
+              {isSubmitting ? (
+                <div className="flex items-center gap-2 text-sm font-bold text-[#0B2545]">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processing…
+                </div>
+              ) : (
+                <>
+                  <p className="truncate text-base font-bold text-[#0B2545] sm:text-lg">
+                    {label}
+                  </p>
+                  <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500 sm:text-sm">
+                    <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
+                    Fast camera scan at the school QR post
+                  </p>
+                </>
+              )}
+            </div>
+
+            <ChevronRight className="h-5 w-5 shrink-0 text-[#0B2545]/40 transition group-hover:translate-x-0.5 group-hover:text-[#0B2545]" />
+          </div>
+        </button>
+      </div>
 
       {isScanning && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/80 p-4 sm:items-center">
-          <div className="relative w-full max-w-sm overflow-hidden rounded-[28px] bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0B2545]/85 p-4 backdrop-blur-sm sm:items-center">
+          <div className="relative w-full max-w-md overflow-hidden rounded-[28px] bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-[#0B2545] to-[#12345c] px-5 py-4 text-white">
               <div>
-                <h3 className="text-base font-bold text-slate-900">
+                <h3 className="text-base font-bold">
                   {isClockIn ? "Scan to clock in" : "Scan to clock out"}
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-white/75">
                   Point your camera at the school QR code
                 </p>
               </div>
@@ -152,7 +186,7 @@ export function QrClockIn({ action, label }: QrClockInProps) {
                 type="button"
                 onClick={closeScanner}
                 aria-label="Close scanner"
-                className="rounded-full bg-slate-100 p-2 text-slate-600 transition hover:bg-slate-200"
+                className="rounded-full bg-white/15 p-2 text-white transition hover:bg-white/25"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -161,7 +195,7 @@ export function QrClockIn({ action, label }: QrClockInProps) {
             <div className="p-4">
               <div
                 id="qr-reader"
-                className="aspect-square w-full overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-950"
+                className="aspect-square w-full overflow-hidden rounded-2xl border-2 border-dashed border-[#0B2545]/20 bg-slate-950"
               />
               <p className="mt-3 text-center text-xs font-medium text-slate-500">
                 Hold steady until the code is detected
