@@ -1,79 +1,79 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { AxiosError } from "axios";
+import { Camera, Loader2, ScanLine, X } from "lucide-react";
 import toast from "react-hot-toast";
+
+import type { AttendanceAction } from "../hooks/useAttendanceMode";
 import api from "../utils/axiosConfig";
+import { getPosition } from "../utils/geolocation";
 
-type QrAction = "in" | "out";
+interface QrClockInProps {
+  action: AttendanceAction;
+  label: string;
+}
 
-const getPosition = () =>
-  new Promise<GeolocationPosition>((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error("Your browser does not support GPS tracking."));
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: true,
-    });
-  });
-
-export const QrClockIn: React.FC = () => {
-  const [statusMessage, setStatusMessage] = useState<string>("");
-  const [isScanning, setIsScanning] = useState<boolean>(false);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [action, setAction] = useState<QrAction>("in");
+export function QrClockIn({ action, label }: QrClockInProps) {
+  const [statusMessage, setStatusMessage] = useState("");
+  const [isScanning, setIsScanning] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
+  const isClockIn = action === "in";
+  const busy = isScanning || isSubmitting;
 
   useEffect(() => {
     return () => {
-      if (qrScannerRef.current && qrScannerRef.current.isScanning) {
-        qrScannerRef.current.stop().catch((err) => console.error(err));
+      if (qrScannerRef.current?.isScanning) {
+        qrScannerRef.current.stop().catch(console.error);
       }
     };
   }, []);
 
-  const submitScan = async (qrString: string, mode: QrAction) => {
+  const submitScan = async (qrString: string) => {
     setIsSubmitting(true);
     try {
-      setStatusMessage("QR detected! Fetching GPS location...");
+      setStatusMessage("QR detected. Fetching location…");
       const position = await getPosition();
       const { latitude, longitude } = position.coords;
 
-      const payload =
-        mode === "in"
-          ? { qrString, timeInLat: latitude, timeInLng: longitude }
-          : { qrString, timeOutLat: latitude, timeOutLng: longitude };
+      const payload = isClockIn
+        ? { qrString, timeInLat: latitude, timeInLng: longitude }
+        : { qrString, timeOutLat: latitude, timeOutLng: longitude };
 
-      setStatusMessage("Sending clock-in data to server...");
-      const { data } = await api.post(`/attendance/qr/${mode}`, payload);
-      setStatusMessage(
-        `✅ ${data.message || (mode === "in" ? "Clock-in successful!" : "Clock-out successful!")}`,
-      );
+      const { data } = await api.post(`/attendance/qr/${action}`, payload);
+      const successMessage =
+        data.message ||
+        (isClockIn ? "Clock-in successful." : "Clock-out successful.");
+
+      setStatusMessage(successMessage);
+      toast.success(successMessage);
     } catch (error) {
+      const fallback = "QR attendance failed.";
       if (error instanceof AxiosError) {
         setStatusMessage(
-          `❌ ${error.response?.data?.message || "Server error. Please try again."}`,
+          error.response?.data?.message || "Server error. Please try again.",
         );
       } else if (error instanceof Error) {
-        setStatusMessage(`❌ ${error.message}`);
+        setStatusMessage(error.message);
       } else {
-        setStatusMessage("❌ Network error. Please try again.");
+        setStatusMessage("Network error. Please try again.");
       }
-      toast.error("QR attendance failed.");
+      toast.error(fallback);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const startScanner = async (mode: QrAction) => {
-    setAction(mode);
-    setIsScanning(true);
-    setStatusMessage("Opening camera...");
+  const startScanner = async () => {
+    if (busy) return;
 
-    setTimeout(async () => {
+    setIsScanning(true);
+    setStatusMessage("Opening camera…");
+
+    window.setTimeout(async () => {
       try {
-        const html5QrCode = new Html5Qrcode("reader");
+        const html5QrCode = new Html5Qrcode("qr-reader");
         qrScannerRef.current = html5QrCode;
 
         await html5QrCode.start(
@@ -84,85 +84,98 @@ export const QrClockIn: React.FC = () => {
               .stop()
               .then(() => {
                 setIsScanning(false);
-                submitScan(decodedText, mode);
+                submitScan(decodedText);
               })
-              .catch((err) => console.error(err));
+              .catch(console.error);
           },
           () => {},
         );
-        setStatusMessage("Align QR Code within the frame.");
+        setStatusMessage("Align the QR code within the frame.");
       } catch (err) {
         console.error("Camera startup failed:", err);
-        setStatusMessage("❌ Could not access camera permissions.");
+        setStatusMessage("Could not access camera permissions.");
         setIsScanning(false);
       }
     }, 150);
   };
 
-  const closeScannerManually = async () => {
-    if (qrScannerRef.current && qrScannerRef.current.isScanning) {
+  const closeScanner = async () => {
+    if (qrScannerRef.current?.isScanning) {
       await qrScannerRef.current.stop();
     }
     setIsScanning(false);
     setStatusMessage("Scan cancelled.");
   };
 
-  const busy = isScanning || isSubmitting;
-
   return (
-    <div className="mx-auto max-w-md p-5 text-center">
-      <h2 className="mb-4 text-xl font-bold text-gray-800">QR Attendance</h2>
-
-      <div className="flex flex-col gap-3">
-        <button
-          onClick={() => startScanner("in")}
-          disabled={busy}
-          className={`rounded-lg px-6 py-3 font-semibold shadow-md transition-all ${
-            busy
-              ? "cursor-not-allowed bg-gray-400 text-gray-200"
-              : "bg-blue-600 text-white hover:bg-blue-700 active:scale-95"
-          }`}
-        >
-          {isSubmitting && action === "in" ? "Processing..." : "Scan to Clock In"}
-        </button>
-        <button
-          onClick={() => startScanner("out")}
-          disabled={busy}
-          className={`rounded-lg border px-6 py-3 font-semibold transition-all ${
-            busy
-              ? "cursor-not-allowed border-gray-200 text-gray-300"
-              : "border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95"
-          }`}
-        >
-          {isSubmitting && action === "out" ? "Processing..." : "Scan to Clock Out"}
-        </button>
-      </div>
+    <>
+      <button
+        type="button"
+        onClick={startScanner}
+        disabled={busy}
+        className={`flex w-full max-w-sm items-center justify-center gap-2.5 rounded-2xl px-6 py-4 text-sm font-bold shadow-lg transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${
+          isClockIn
+            ? "bg-white text-[#0B2545] ring-1 ring-slate-200 hover:bg-slate-50"
+            : "bg-amber-50 text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100"
+        }`}
+      >
+        {isSubmitting ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Processing…
+          </>
+        ) : (
+          <>
+            {isClockIn ? (
+              <Camera className="h-4 w-4" />
+            ) : (
+              <ScanLine className="h-4 w-4" />
+            )}
+            {label}
+          </>
+        )}
+      </button>
 
       {isScanning && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 p-4 transition-opacity">
-          <div className="relative flex w-full max-w-sm flex-col items-center rounded-xl bg-white p-5 shadow-2xl">
-            <h3 className="mb-2 text-lg font-semibold text-gray-800">
-              Scan Attendance QR Code
-            </h3>
-            <div
-              id="reader"
-              className="aspect-square w-full overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-100"
-            />
-            <button
-              onClick={closeScannerManually}
-              className="mt-4 rounded-md bg-red-100 px-4 py-2 font-medium text-red-600 hover:bg-red-200"
-            >
-              Cancel
-            </button>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/80 p-4 sm:items-center">
+          <div className="relative w-full max-w-sm overflow-hidden rounded-[28px] bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  {isClockIn ? "Scan to clock in" : "Scan to clock out"}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Point your camera at the school QR code
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeScanner}
+                aria-label="Close scanner"
+                className="rounded-full bg-slate-100 p-2 text-slate-600 transition hover:bg-slate-200"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-4">
+              <div
+                id="qr-reader"
+                className="aspect-square w-full overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-950"
+              />
+              <p className="mt-3 text-center text-xs font-medium text-slate-500">
+                Hold steady until the code is detected
+              </p>
+            </div>
           </div>
         </div>
       )}
 
-      {statusMessage && (
-        <p className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-3 text-base font-bold tracking-wide text-gray-700">
+      {statusMessage && !isScanning && (
+        <p className="mt-3 text-center text-xs font-medium text-slate-600">
           {statusMessage}
         </p>
       )}
-    </div>
+    </>
   );
-};
+}

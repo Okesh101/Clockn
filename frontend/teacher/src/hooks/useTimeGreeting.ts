@@ -10,14 +10,11 @@ export const useTimeGreeting = () => {
       const hour = new Date().getHours();
       
       if (hour < 12) {
-        setGreeting('Good morning');
-        // setTimeEmoji('🌅');
+        setGreeting('Good Morning');
       } else if (hour < 17) {
-        setGreeting('Good afternoon');
-        // setTimeEmoji('☀️');
+        setGreeting('Good Afternoon');
       } else {
-        setGreeting('Good evening');
-        // setTimeEmoji('🌙');
+        setGreeting('Good Evening');
       }
     };
     
