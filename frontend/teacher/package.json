@@ -12,13 +12,18 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.3.2",
     "axios": "^1.18.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.42.2",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^1.24.0",
     "qrcode.react": "^4.2.0",
+    "radix-ui": "^1.6.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.18.1",
+    "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.2"
   },
   "devDependencies": {
