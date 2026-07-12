@@ -125,7 +125,7 @@ export function QrClockIn({ action, label }: QrClockInProps) {
           type="button"
           onClick={startScanner}
           disabled={busy}
-          className={`group relative w-full overflow-hidden rounded-2xl p-[1.5px] shadow-lg transition-all hover:shadow-xl active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 ${
+          className={`group relative w-full overflow-hidden rounded-2xl p-[1.5px] shadow-lg transition-all cursor-pointer hover:shadow-xl active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 ${
             isClockIn
               ? "bg-gradient-to-r from-[#0B2545] via-[#12345c] to-emerald-700"
               : "bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600"
