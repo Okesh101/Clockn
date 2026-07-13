@@ -14,7 +14,11 @@ import {
   fetchAttendanceLogs,
   fetchAttendanceStats,
 } from "../services/attendanceApi";
-import type { AttendanceRange, AttendanceStats, TeacherAttendanceRow } from "../types/attendance";
+import type {
+  AttendanceRange,
+  AttendanceStats,
+  TeacherAttendanceRow,
+} from "../types/attendance";
 
 export function Dashboard() {
   const { admin, logout } = useAuth();
@@ -50,7 +54,9 @@ export function Dashboard() {
       setHasNext(logsRes.meta?.has_next ?? false);
     } catch (err) {
       if (err instanceof AxiosError) {
-        setError(err.response?.data?.message || "Failed to load dashboard data.");
+        setError(
+          err.response?.data?.message || "Failed to load dashboard data.",
+        );
       } else {
         setError("Failed to load dashboard data.");
       }
@@ -113,11 +119,31 @@ export function Dashboard() {
       ) : (
         <>
           <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 lg:gap-4">
-            <KpiCard label="Total Teachers" value={stats?.total_teachers ?? 0} tone="teachers" />
-            <KpiCard label="Present Today" value={stats?.total_present ?? 0} tone="present" />
-            <KpiCard label="Late Today" value={stats?.total_late ?? 0} tone="late" />
-            <KpiCard label="Absent Today" value={stats?.total_absent ?? 0} tone="absent" />
-            <KpiCard label="On Time Today" value={stats?.total_on_time ?? 0} tone="ontime" />
+            <KpiCard
+              label="Total Teachers"
+              value={stats?.total_teachers ?? 0}
+              tone="teachers"
+            />
+            <KpiCard
+              label={getRange(range, "Present")}
+              value={stats?.total_present ?? 0}
+              tone="present"
+            />
+            <KpiCard
+              label={getRange(range, "Late")}
+              value={stats?.total_late ?? 0}
+              tone="late"
+            />
+            <KpiCard
+              label={getRange(range, "Absent")}
+              value={stats?.total_absent ?? 0}
+              tone="absent"
+            />
+            <KpiCard
+              label={getRange(range, "On Time")}
+              value={stats?.total_on_time ?? 0}
+              tone="ontime"
+            />
           </section>
 
           <section className="mt-8">
@@ -135,7 +161,17 @@ export function Dashboard() {
               </Button>
             </div>
 
-            <AttendanceTable rows={rows} page={page} />
+            {startDate && endDate ? (
+              <AttendanceTable
+                rows={rows}
+                range={range}
+                startDate={startDate}
+                endDate={endDate}
+                page={page}
+              />
+            ) : (
+              <AttendanceTable rows={rows} range={range} page={page} />
+            )}
 
             {(page > 1 || hasNext) && (
               <div className="mt-4 flex items-center justify-between">
@@ -164,5 +200,13 @@ export function Dashboard() {
     </AdminLayout>
   );
 }
+
+const getRange = (rng: AttendanceRange, spec: string) => {
+  if (rng === "today") return `${spec} Today`;
+  else if (rng === "yesterday") return `${spec} Yesterday`;
+  else if (rng === "week") return `${spec} This Week`;
+  else if (rng === "month") return `${spec} This Month`;
+  return `${spec} This Period`;
+};
 
 export default Dashboard;
