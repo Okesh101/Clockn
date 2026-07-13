@@ -11,6 +11,7 @@ import {
   User,
   Eye,
   MessageSquare,
+  LucideMessageCircleCheck
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -141,7 +142,7 @@ function PageBtn({
 }
 
 // Action Types
-type TeacherAction = "call" | "email" | "view" | "message";
+type TeacherAction = "call" | "email" | "whatsapp" | "view" | "message";
 
 const ACTION_META: Record<
   TeacherAction,
@@ -156,6 +157,11 @@ const ACTION_META: Record<
     label: "Email",
     icon: Mail,
     color: "text-blue-700 border-blue-500/50 hover:bg-blue-50",
+  },
+  whatsapp: {
+    label: "Whatsapp",
+    icon: LucideMessageCircleCheck,
+    color: "text-purple-700 border-purple-500/50 hover:bg-purple-50",
   },
   view: {
     label: "View",
@@ -357,7 +363,7 @@ export function Teachers() {
     }
   };
 
-  // Handle teacher actions
+  // Update handleTeacherAction to handle WhatsApp
   const handleTeacherAction = (action: TeacherAction, teacherId: string) => {
     const teacher = teachers.find((t) => t.id === teacherId);
     if (!teacher) return;
@@ -368,6 +374,25 @@ export function Teachers() {
           window.location.href = `tel:${teacher.phone}`;
         } else {
           alert("No phone number available for this teacher.");
+        }
+        break;
+
+      case "whatsapp":
+        if (teacher.phone) {
+          // Format phone number for WhatsApp
+          let phone = teacher.phone.replace(/\D/g, "");
+          if (phone.startsWith("0")) {
+            phone = "234" + phone.substring(1);
+          }
+          if (!phone.startsWith("234")) {
+            phone = "234" + phone;
+          }
+          const message = encodeURIComponent(
+            `Hello ${teacher.name},\n\nI hope this message finds you well.\n\nBest regards,\nSchool Administration`,
+          );
+          window.open(`https://wa.me/${phone}?text=${message}`, "_blank");
+        } else {
+          alert("No phone number available for WhatsApp.");
         }
         break;
 
@@ -388,10 +413,8 @@ export function Teachers() {
             const gmailLink = `googlegmail://co?to=${teacher.email}&subject=${subject}&body=${body}`;
             const mailtoLink = `mailto:${teacher.email}?subject=${subject}&body=${body}`;
 
-            // Try Gmail app, fallback to mailto
             try {
               window.location.href = gmailLink;
-              // If Gmail app doesn't open, fallback to mailto after a delay
               setTimeout(() => {
                 window.location.href = mailtoLink;
               }, 1000);
@@ -399,7 +422,6 @@ export function Teachers() {
               window.location.href = mailtoLink;
             }
           } else {
-            // Desktop - use mailto
             const mailtoLink = `mailto:${teacher.email}?subject=${subject}&body=${body}`;
             window.location.href = mailtoLink;
           }
@@ -407,6 +429,7 @@ export function Teachers() {
           alert("No email address available for this teacher.");
         }
         break;
+
       case "view":
         setSelectedTeacher(teacher);
         setIsModalOpen(true);
@@ -555,7 +578,7 @@ export function Teachers() {
                         </td>
                         <td className="px-3 py-2.5">
                           <NextActionButton
-                            actions={["call", "email", "view"]}
+                            actions={["call", "whatsapp", "email", "view"]}
                             onAction={handleTeacherAction}
                             teacherId={teacher.id}
                           />
