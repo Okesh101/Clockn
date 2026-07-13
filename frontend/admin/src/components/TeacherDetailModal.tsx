@@ -185,7 +185,7 @@ export function TeacherDetailModal({
                   </button>
                 </>
               )}
-
+ 
               <button
                 onClick={() => handleAction("email")}
                 className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-xs sm:text-sm font-semibold flex-1 sm:flex-none min-w-[80px] justify-center"
