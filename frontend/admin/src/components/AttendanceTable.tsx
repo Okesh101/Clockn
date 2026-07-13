@@ -1,4 +1,4 @@
-// src/components/HistoryTable.tsx
+// src/components/AttendanceTable.tsx
 
 import { useState, useMemo, useEffect } from "react";
 import { Search, ChevronDown } from "lucide-react";
