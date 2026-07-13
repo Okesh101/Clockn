@@ -1,4 +1,4 @@
-export type AttendanceRange = "today" | "yesterday" | "month" | "custom";
+export type AttendanceRange = "today" | "yesterday" | "week" | "month" | "custom";
 
 export interface AttendanceStats {
   total_teachers: number;

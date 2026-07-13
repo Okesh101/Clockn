@@ -3,6 +3,7 @@ import type { AttendanceRange } from "../types/attendance";
 const OPTIONS: { value: AttendanceRange; label: string }[] = [
   { value: "today", label: "Today" },
   { value: "yesterday", label: "Yesterday" },
+  { value: "week", label: "Week" },
   { value: "month", label: "This Month" },
   { value: "custom", label: "Custom" },
 ];
