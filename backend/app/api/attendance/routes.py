@@ -464,22 +464,35 @@ def get_all_teachers_attendance_endpoint():
     today_lagos = now_lagos.date()
 
     # 2. Extract and parse URL Date Range Filters
-    range_type = request.args.get('range_type', 'today')  # options: today, yesterday, month, custom
-    
+    # options: today, yesterday, week, month, custom
+    range_type = request.args.get('range_type', 'today')
+
     if range_type == 'yesterday':
         start_filter = today_lagos - timedelta(days=1)
         end_filter = today_lagos - timedelta(days=1)
+    elif range_type == 'week':
+        # Safely capture Monday even if accessed on Saturday(5) or Sunday(6)
+        current_weekday = today_lagos.weekday()
+        if current_weekday > 4:  # It's Saturday or Sunday
+            start_filter = today_lagos - timedelta(days=current_weekday)
+            end_filter = start_filter + timedelta(days=4)
+        else:
+            start_filter = today_lagos - timedelta(days=current_weekday)
+            # Cap the end filter at 'today' so pagination counts don't look into the future (Tue-Fri)
+            end_filter = today_lagos
     elif range_type == 'month':
         start_filter = today_lagos.replace(day=1)
         end_filter = today_lagos
     elif range_type == 'custom':
         try:
-            start_filter = datetime.strptime(request.args.get('start_date'), '%Y-%m-%d').date()
-            end_filter = datetime.strptime(request.args.get('end_date'), '%Y-%m-%d').date()
+            start_filter = datetime.strptime(
+                request.args.get('start_date'), '%Y-%m-%d').date()
+            end_filter = datetime.strptime(
+                request.args.get('end_date'), '%Y-%m-%d').date()
         except (ValueError, TypeError):
             return jsonify({
-                "status": "ERROR", 
-                "code": 400, 
+                "status": "ERROR",
+                "code": 400,
                 "message": "Invalid custom date format. Use YYYY-MM-DD"
             }), 400
     else:  # Default fallback option is always 'today'
@@ -498,7 +511,8 @@ def get_all_teachers_attendance_endpoint():
 
     # 💡 FIX: Total count must scale dynamically based on your filters to protect pagination
     # If looking at "today", total items equals total teachers. If looking at a range, count total log items.
-    if start_filter == end_filter:
+    # if start_filter == end_filter:
+    if range_type in ['today', 'yesterday']:
         total_count_query = db.select(func.count(Teacher.id))
     else:
         total_count_query = db.select(func.count(AttendanceLog.id)).filter(
@@ -506,6 +520,7 @@ def get_all_teachers_attendance_endpoint():
             cast(AttendanceLog.time_in, Date) <= end_filter
         )
 
+    total_count_query = db.select(func.count(Teacher.id))
     total_items = db.session.execute(total_count_query).scalar() or 0
 
     if total_items == 0:
@@ -564,8 +579,8 @@ def get_all_teachers_attendance_endpoint():
 
     if not records and page > 1:
         return jsonify({
-            "status": "ERROR", 
-            "code": 400, 
+            "status": "ERROR",
+            "code": 400,
             "message": f"Page {page} out of bounds."
         }), 400
 
@@ -588,7 +603,6 @@ def get_all_teachers_attendance_endpoint():
             "School (Button)" if row.time_in_method == "button" else None)
         out_loc = row.clock_out_location_name or (
             "School (Button)" if row.time_out_method == "button" else None)
-
 
         # Build clean JSON serializable dictionary objects
         teachers_attendance_data.append({

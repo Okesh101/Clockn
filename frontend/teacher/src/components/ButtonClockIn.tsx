@@ -88,7 +88,7 @@ export function ButtonClockIn({ action, label }: ButtonClockInProps) {
           onClick={handleClock}
           disabled={busy}
           aria-label={label}
-          className={`flex h-52 w-52 shrink-0 select-none flex-col items-center justify-center rounded-full border-4 border-white/25 text-center text-white ring-8 transition-[transform,background-color,box-shadow] duration-200 active:scale-[0.97] disabled:cursor-not-allowed sm:h-56 sm:w-56 ${ringClass} ${buttonClass} ${
+          className={`flex h-52 w-52 shrink-0 select-none flex-col items-center justify-center rounded-full border-4 border-white/25 text-center text-white ring-8 cursor-pointer transition-[transform,background-color,box-shadow] duration-200 active:scale-[0.97] disabled:cursor-not-allowed sm:h-56 sm:w-56 ${ringClass} ${buttonClass} ${
             state === "success"
               ? "!bg-emerald-600 !shadow-[0_20px_50px_-16px_rgba(5,150,105,0.45)] !ring-emerald-500/25"
               : state === "error"

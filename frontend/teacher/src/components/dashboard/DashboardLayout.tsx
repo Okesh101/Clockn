@@ -114,7 +114,7 @@ function SidebarNav({
             onNavigate?.();
             onLogout();
           }}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/15 active:scale-[0.98]"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/15 active:scale-[0.98] cursor-pointer"
         >
           <LogOut className="h-4 w-4" />
           Logout
