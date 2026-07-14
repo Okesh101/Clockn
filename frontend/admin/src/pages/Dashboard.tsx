@@ -2,16 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AxiosError } from "axios";
-import {
-  Loader2,
-  RefreshCw,
-  UserCheck,
-  AlertCircle,
-} from "lucide-react";
+import { Loader2, RefreshCw, UserCheck, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { AttendanceTable } from "../components/AttendanceTable";
 import { DateRangeFilter } from "../components/DateRangeFilter";
+import { DashboardClockBar } from "../components/DashboardClockBar";
 import { AdminLayout } from "../components/dashboard/AdminLayout";
 import { KpiCard } from "../components/KpiCard";
 import { Button } from "../components/ui/form";
@@ -103,17 +99,20 @@ export function Dashboard() {
       onMenuClose={() => setMenuOpen(false)}
       onLogout={handleLogout}
       headerExtra={
-        <DateRangeFilter
-          value={range}
-          onChange={(value) => {
-            setPage(1);
-            setRange(value);
-          }}
-          startDate={startDate}
-          endDate={endDate}
-          onStartDateChange={setStartDate}
-          onEndDateChange={setEndDate}
-        />
+        <>
+          <DashboardClockBar />
+          <DateRangeFilter
+            value={range}
+            onChange={(value) => {
+              setPage(1);
+              setRange(value);
+            }}
+            startDate={startDate}
+            endDate={endDate}
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
+          />
+        </>
       }
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
