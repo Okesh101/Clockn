@@ -6,7 +6,6 @@ import {
   Calendar,
   Clock,
   User,
-  MessageSquare,
   Send,
   LucideMessageCircleCheck,
 } from "lucide-react";
