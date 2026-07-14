@@ -11,7 +11,8 @@ roles_bp = Blueprint("roles", __name__)
 
 # api/v1/roles/seed
 @roles_bp.route("/seed", methods=["POST"])
-@limiter.limit('1 per minute')
+@limiter.limit('5 per minute')
+@roles_required("Admin")  # Only Admins can seed roles
 def seed_roles_endpoint():
     data = request.get_json() or {}
     if not data.get("roles"):
@@ -57,7 +58,7 @@ def seed_roles_endpoint():
 
 # api/v1/roles/assign
 @roles_bp.route("/assign", methods=["POST"])
-@limiter.limit('5 per minute')
+@limiter.limit('15 per minute')
 @jwt_required()
 @roles_required("Admin")  # Only Admins can assign roles
 def upgrade_roles_endpoint():
