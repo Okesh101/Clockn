@@ -20,6 +20,7 @@ attendance_bp = Blueprint("attendance", __name__)
 @attendance_bp.route("/in", methods=['POST'])
 @limiter.limit('20 per minute')
 @jwt_required()
+@roles_required("Teacher")
 def button_clock_in_endpoint():
     current_teacher_id = get_jwt_identity()
     lagos_tz = zoneinfo.ZoneInfo("Africa/Lagos")
@@ -117,6 +118,7 @@ def button_clock_in_endpoint():
 @attendance_bp.route("/qr/in", methods=['POST'])
 @limiter.limit('20 per minute')
 @jwt_required()
+@roles_required("Teacher")
 def qr_clock_in_endpoint():
     current_teacher_id = get_jwt_identity()
     lagos_tz = zoneinfo.ZoneInfo("Africa/Lagos")
@@ -228,6 +230,7 @@ def qr_clock_in_endpoint():
 @attendance_bp.route("/out", methods=['POST'])
 @limiter.limit('20 per minute')
 @jwt_required()
+@roles_required("Teacher")
 def button_clock_out_endpoint():
     current_teacher_id = get_jwt_identity()
     lagos_tz = zoneinfo.ZoneInfo("Africa/Lagos")
@@ -334,6 +337,7 @@ def button_clock_out_endpoint():
 @attendance_bp.route("/qr/out", methods=['POST'])
 @limiter.limit('20 per minute')
 @jwt_required()
+@roles_required("Teacher")
 def qr_clock_out_endpoint():
     current_teacher_id = get_jwt_identity()
     lagos_tz = zoneinfo.ZoneInfo("Africa/Lagos")
