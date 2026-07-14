@@ -2,7 +2,7 @@
 
 from app.utils.types import SCHOOL_COORDS
 
-def calculate_distance(lat1, lng1, lat2, lng2):
+def haversine_distance(lat1, lng1, lat2, lng2):
     import math
     # Convert degrees to radians
     theta1 = math.radians(lat1)
@@ -33,4 +33,4 @@ def calculate_teacher_distance(teacher_lat, teacher_lng, coords={}, method=""):
         lat = float(SCHOOL_COORDS.LAT.value)
         lng = float(SCHOOL_COORDS.LNG.value)
 
-    return calculate_distance(teacher_lat, teacher_lng, lat, lng)
+    return haversine_distance(teacher_lat, teacher_lng, lat, lng)
