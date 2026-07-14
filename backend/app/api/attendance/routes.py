@@ -457,6 +457,218 @@ def qr_clock_out_endpoint():
         }), 500
 
 
+@attendance_bp.route("/me", methods=['GET'])
+@limiter.limit('30 per minute')
+@jwt_required()
+@roles_required("Teacher")
+def get_teacher_history_endpoint():
+    current_teacher_id = get_jwt_identity()
+
+    # 1. Coordinate localized Lagos timeline targets
+    lagos_tz = zoneinfo.ZoneInfo("Africa/Lagos")
+    now_lagos = datetime.now(lagos_tz)
+    today_lagos = now_lagos.date()
+
+    # 2. Extract and parse URL Date Range Filters
+    range_type = request.args.get('range_type', 'all')
+
+    if range_type == 'week':
+        current_weekday = today_lagos.weekday()
+        if current_weekday > 4:  # It's Saturday or Sunday
+            start_filter = today_lagos - timedelta(days=current_weekday)
+            end_filter = start_filter + timedelta(days=4)
+        else:
+            start_filter = today_lagos - timedelta(days=current_weekday)
+            end_filter = today_lagos
+    elif range_type == 'month':
+        start_filter = today_lagos.replace(day=1)
+        end_filter = today_lagos
+    elif range_type == 'custom':
+        try:
+            start_filter = datetime.strptime(
+                request.args.get('start_date'), '%Y-%m-%d').date()
+            end_filter = datetime.strptime(
+                request.args.get('end_date'), '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            return jsonify({
+                "status": "ERROR",
+                "code": 400,
+                "message": "Invalid custom date format. Use YYYY-MM-DD"
+            }), 400
+    else:  # Default fallback option is always 'all'
+        start_filter = today_lagos - timedelta(days=90)
+        end_filter = today_lagos
+
+    # 3. Generate a sequence of workdays (Monday through Friday) inside the target window
+    target_dates = []
+    current_date = start_filter
+    while current_date <= end_filter:
+        if current_date.weekday() < 5:  # 0 to 4 represent Monday to Friday
+            target_dates.append(current_date)
+        current_date += timedelta(days=1)
+
+    # Sort target dates descending to show newest dates first
+    target_dates.reverse()
+
+    total_items = len(target_dates)
+
+    if total_items == 0:
+        return jsonify({
+            "status": "NOT_FOUND",
+            "code": 404,
+            "message": "No workdays found inside this range structure."
+        }), 404
+
+    # 4. Core Query: Fetch ALL logs within the full date range window to compute true KPIs
+    InLocation = aliased(QrLocation, name="in_location")
+    OutLocation = aliased(QrLocation, name="out_location")
+
+    query = (
+        db.select(
+            AttendanceLog.id.label("log_id"),
+            AttendanceLog.time_in,
+            AttendanceLog.time_out,
+            AttendanceLog.status,
+            AttendanceLog.punctuality,
+            AttendanceLog.time_in_method,
+            AttendanceLog.time_out_method,
+            InLocation.location.label("clock_in_location_name"),
+            OutLocation.location.label("clock_out_location_name")
+        )
+        .outerjoin(InLocation, AttendanceLog.clock_in_qr == InLocation.qr_string)
+        .outerjoin(OutLocation, AttendanceLog.clock_out_qr == OutLocation.qr_string)
+        .filter(
+            AttendanceLog.teacher_id == current_teacher_id,
+            cast(AttendanceLog.time_in, Date) >= start_filter,
+            cast(AttendanceLog.time_in, Date) <= end_filter
+        )
+    )
+
+    all_raw_records = db.session.execute(query).all()
+
+    # Map the database records by their calendar date key for O(1) matching performance
+    logs_by_date = {}
+    for row in all_raw_records:
+        if row.time_in:
+            date_key = row.time_in.astimezone(lagos_tz).date().isoformat()
+            logs_by_date[date_key] = row
+
+    # 5. Global Summary Statistics Engine (Runs across all dates in the selection)
+    summary_stats = {
+        "total": 0,
+        "present": 0,
+        "absent": 0,
+        "late": 0,
+        "onTime": 0
+    }
+
+    for day in target_dates:
+        day_str = day.isoformat()
+        row = logs_by_date.get(day_str)
+
+        summary_stats["total"] += 1
+        if row:
+            summary_stats["present"] += 1
+            # Adjust strings to match your data layer capitalization expectations
+            p_status = str(row.punctuality).lower() if row.punctuality else ""
+            if p_status in ["late"]:
+                summary_stats["late"] += 1
+            elif p_status in ["on_time", "on-time", "ontime"]:
+                summary_stats["onTime"] += 1
+        else:
+            summary_stats["absent"] += 1
+
+    # 6. Pagination Slicing
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+    except ValueError:
+        page = 1
+
+    PER_PAGE = 15
+    total_pages = (total_items + PER_PAGE - 1) // PER_PAGE
+    has_next = page < total_pages
+    has_prev = page > 1
+
+    start_offset = (page - 1) * PER_PAGE
+    end_offset = start_offset + PER_PAGE
+    paginated_dates = target_dates[start_offset:end_offset]
+
+    if not paginated_dates and page > 1:
+        return jsonify({
+            "status": "ERROR",
+            "code": 400,
+            "message": f"Page {page} out of bounds."
+        }), 400
+
+    # 7. Build out only the paginated data rows for the JSON return payload
+    teacher_attendance_data = []
+
+    for day in paginated_dates:
+        day_str = day.isoformat()
+        row = logs_by_date.get(day_str)
+
+        if row:
+            duration_minutes = None
+            if row.time_in and row.time_out:
+                in_time_localized = row.time_in.astimezone(lagos_tz)
+                out_time_localized = row.time_out.astimezone(lagos_tz)
+                time_delta = out_time_localized - in_time_localized
+                duration_minutes = int(time_delta.total_seconds() // 60)
+
+            in_loc = row.clock_in_location_name or (
+                "School (Button)" if row.time_in_method == "button" else None)
+            out_loc = row.clock_out_location_name or (
+                "School (Button)" if row.time_out_method == "button" else None)
+
+            teacher_attendance_data.append({
+                "date": day_str,
+                "log_id": str(row.log_id),
+                "status": row.status,
+                "punctuality": row.punctuality,
+                "time_in": row.time_in.isoformat(),
+                "time_out": row.time_out.isoformat() if row.time_out else None,
+                "time_in_method": row.time_in_method,
+                "time_out_method": row.time_out_method,
+                "clock_in_location": in_loc,
+                "clock_out_location": out_loc,
+                "duration_minutes": duration_minutes if duration_minutes is not None else None
+            })
+        else:
+            teacher_attendance_data.append({
+                "date": day_str,
+                "log_id": None,
+                "status": AttendanceStatus.ABSENT.value, # or "absent"
+                "punctuality": None,
+                "time_in": None,
+                "time_out": None,
+                "time_in_method": None,
+                "time_out_method": None,
+                "clock_in_location": None,
+                "clock_out_location": None,
+                "duration_minutes": None
+            })
+
+    return jsonify({
+        "status": "SUCCESS",
+        "code": 200,
+        "message": f"Personal history for range '{range_type}' fetched successfully.",
+        "meta": {
+            "total_items": total_items,
+            "total_pages": total_pages,
+            "current_page": page,
+            "per_page": PER_PAGE,
+            "has_next": has_next,
+            "has_prev": has_prev,
+            "filtered_range": {
+                "start": start_filter.isoformat(),
+                "end": end_filter.isoformat()
+            },
+            "summary": summary_stats  # 💡 Global KPIs added here
+        },
+        "data": teacher_attendance_data
+    }), 200
+
+
 @attendance_bp.route("", methods=['GET'])
 @limiter.limit('30 per minute')
 @jwt_required()

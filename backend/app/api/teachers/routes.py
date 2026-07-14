@@ -2,7 +2,6 @@
 
 from flask import Blueprint, jsonify, request
 from app import db, limiter
-from app.models.AttendanceLog import AttendanceLog
 from app.models.Teacher import Teacher
 from app.utils.decorators import roles_required
 from flask_jwt_extended import jwt_required
