@@ -118,6 +118,12 @@ def create_app():
             "code": 404,
             "message": "The requested URL or resource was not found on this server."
         }), 404
+    
+    # ====================================================================
+    # IDEMPOTENT AUTOMATIC ROLE SEEDER
+    # ====================================================================
+    with app.app_context():
+        seed_default_roles()
 
     return app
 
@@ -134,3 +140,26 @@ def check_if_token_revoked(jwt_header, jwt_payload):
     # If token is found in the blocklist table, returns True (Access Denied)
     # If token is NOT found, returns False (Access Granted)
     return token is not None
+
+
+def seed_default_roles():
+    """Idempotently populates core application roles if missing."""
+    from app.models.Role import Role  # Inline import prevents circular dependency loops
+
+    default_roles = ["Admin", "Teacher"]
+    try:
+        for role_name in default_roles:
+            # Check if this specific role already exists
+            role_exists = db.session.execute(
+                db.select(Role).filter_by(name=role_name)
+            ).scalar_one_or_none()
+
+            # If missing, stage it for addition
+            if not role_exists:
+                db.session.add(Role(name=role_name))
+                print(f"Seeding missing role: '{role_name}'")
+
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Warning: Auto-seeding roles failed: {str(e)}")
