@@ -39,7 +39,7 @@ export function ButtonClockIn({ action, label }: ButtonClockInProps) {
       const { data } = await api.post(`/attendance/${action}`, payload);
 
       const successMessage =
-        data.message ||
+        data.message.toUpperCase() ||
         (isClockIn
           ? "Clocked in successfully."
           : "Clocked out successfully.");
