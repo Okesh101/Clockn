@@ -4,6 +4,10 @@ import { BrowserRouter } from "react-router-dom";
 import "./index.css";
 import App from "./App.tsx";
 import { AuthProvider } from "./contexts/AuthContext";
+import { registerSW } from "virtual:pwa-register";
+// Dynamically import the virtual PWA register at runtime to avoid
+// TypeScript module augmentation errors when the virtual module
+// isn't present during type-checking.
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -14,3 +18,8 @@ createRoot(document.getElementById("root")!).render(
     </BrowserRouter>
   </StrictMode>,
 );
+
+// Safely registers the Service Worker utility inside the browser background thread
+if ("serviceWorker" in navigator) {
+  registerSW({ immediate: true });
+}

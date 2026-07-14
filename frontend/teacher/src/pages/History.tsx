@@ -203,7 +203,7 @@ export function History() {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [range, setRange] = useState<HistoryRange>("all");
+  const [range, setRange] = useState<HistoryRange>("week");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [totalItems, setTotalItems] = useState<number>(0);
@@ -426,7 +426,7 @@ export function History() {
         <section className="bg-white rounded-xl border border-slate-200">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 py-3 border-b border-slate-200">
             <h2 className="text-[14px] font-bold uppercase tracking-wide text-[#0B2545]">
-              Attendance History
+              Attendance History ({range.toUpperCase()})
             </h2>
             <div className="flex items-center gap-3">
               <span className="text-[11px] text-slate-500">
