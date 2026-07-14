@@ -10,20 +10,6 @@ from app.utils.decorators import roles_required
 qrcode_bp = Blueprint("qrcode", __name__)
 
 
-# api/v1/qrcode/test
-@qrcode_bp.route("/test", methods=['POST'])
-def test_qrcode_endpoint():
-    data = request.get_json() or {}
-    resp = {
-        "status": "OK",
-        "code": 200,
-        "data": data,
-        "message": "Health check submitted."
-    }
-    print(f"Received QR Code: {data}")
-    return jsonify(resp)
-
-
 # api/v1/qrcode (Create QR Location)
 @qrcode_bp.route("", methods=["POST"])
 @limiter.limit("5 per minute")
