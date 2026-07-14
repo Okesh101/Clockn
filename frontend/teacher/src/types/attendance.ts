@@ -12,6 +12,14 @@ export interface AttendanceRecord {
   duration_minutes: number | null;
 }
 
+export interface AttendanceHistoryMetaSummanry {
+  total: number;
+  present: number;
+  absent: number;
+  late: number;
+  onTime: number;
+}
+
 export interface AttendanceHistoryMeta {
   total_items: number;
   total_pages: number;
@@ -19,6 +27,7 @@ export interface AttendanceHistoryMeta {
   per_page: number;
   has_next: boolean;
   has_prev: boolean;
+  summary: AttendanceHistoryMetaSummanry;
 }
 
 export interface AttendanceHistoryResponse {
