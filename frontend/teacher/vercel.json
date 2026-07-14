@@ -1,11 +1,11 @@
 {
   "rewrites": [
     {
-      "source": "/api/v1/:path*",
-      "destination": "https://clockn.onrender.com*"
+      "source": "/api/v1/(.*)",
+      "destination": "https://clockn.onrender.com"
     },
     {
-      "source": "/:path*",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
