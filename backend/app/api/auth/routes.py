@@ -5,6 +5,7 @@ from app import db, limiter
 from app.models.Teacher import Teacher
 from app.models.Role import Role
 from app.models.TokenBlocklist import TokenBlocklist
+from app.utils.decorators import roles_required
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt, get_jwt_identity
 
 auth_bp = Blueprint("auth", __name__)
@@ -42,19 +43,6 @@ def register_endpoint():
             "code": 409
         }), 409
 
-    # Setup roles safely
-    is_first_user = db.session.execute(db.select(Teacher)).first() is None
-    requested_role = "Admin" if is_first_user else "Teacher"
-
-    role_obj = db.session.execute(db.select(Role).filter_by(
-        name=requested_role)).scalar_one_or_none()
-    if not role_obj:
-        return jsonify({
-            "status": "ERROR",
-            "code": 400,
-            "message": f"The role '{requested_role}' does not exist on this system."
-        }), 400
-
     new_teacher = Teacher(
         firstname=data['firstname'],
         lastname=data['lastname'],
@@ -62,8 +50,34 @@ def register_endpoint():
         phone=phone
     )
     new_teacher.set_password(data['password'])
-    new_teacher.roles.append(role_obj)
 
+    # Setup roles safely
+    is_first_user = db.session.execute(db.select(Teacher)).first() is None
+
+    if is_first_user:
+        admin_role = db.session.execute(db.select(Role).filter_by(name="Admin")).scalar_one_or_none()
+        teacher_role = db.session.execute(db.select(Role).filter_by(name="Teacher")).scalar_one_or_none()
+
+        if not admin_role or not teacher_role:
+            return jsonify({
+                "status": "ERROR",
+                "code": 500,
+                "message": "System critical roles ('Admin' or 'Teacher') are missing from the database."
+            }), 500
+        
+        new_teacher.roles.append(admin_role)
+        new_teacher.roles.append(teacher_role)
+    else:
+        # Subsequent registrations only receive the Teacher role
+        teacher_role = db.session.execute(
+            db.select(Role).filter_by(name="Teacher")).scalar_one_or_none()
+        if not teacher_role:
+            return jsonify({
+                "status": "ERROR",
+                "code": 500,
+                "message": "The role 'Teacher' does not exist on this system."
+            }), 500
+        new_teacher.roles.append(teacher_role)
     try:
         db.session.add(new_teacher)
         db.session.commit()
@@ -122,6 +136,7 @@ def login_endpoint():
 # api/v1/auth/profile
 @auth_bp.route("/profile", methods=["GET"])
 @jwt_required()
+@roles_required("Teacher", "Admin")
 def get_profile_endpoint():
     current_teacher_id = get_jwt_identity()
 
