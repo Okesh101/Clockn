@@ -17,6 +17,7 @@ import zoneinfo
 attendance_bp = Blueprint("attendance", __name__)
 
 
+# api/v1/attendance/qr
 @attendance_bp.route("/in", methods=['POST'])
 @limiter.limit('20 per minute')
 @jwt_required()
@@ -115,6 +116,7 @@ def button_clock_in_endpoint():
         }), 500
 
 
+# api/v1/attendance/qr/in
 @attendance_bp.route("/qr/in", methods=['POST'])
 @limiter.limit('20 per minute')
 @jwt_required()
@@ -227,6 +229,7 @@ def qr_clock_in_endpoint():
         }), 500
 
 
+# api/v1/attendance/out
 @attendance_bp.route("/out", methods=['POST'])
 @limiter.limit('20 per minute')
 @jwt_required()
@@ -334,6 +337,7 @@ def button_clock_out_endpoint():
         }), 500
 
 
+# api/v1/attendance/qr/out
 @attendance_bp.route("/qr/out", methods=['POST'])
 @limiter.limit('20 per minute')
 @jwt_required()
@@ -457,6 +461,7 @@ def qr_clock_out_endpoint():
         }), 500
 
 
+# api/v1/attendance/me
 @attendance_bp.route("/me", methods=['GET'])
 @limiter.limit('30 per minute')
 @jwt_required()
@@ -669,6 +674,7 @@ def get_teacher_history_endpoint():
     }), 200
 
 
+# api/v1/attendance
 @attendance_bp.route("", methods=['GET'])
 @limiter.limit('30 per minute')
 @jwt_required()

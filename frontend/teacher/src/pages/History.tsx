@@ -494,7 +494,7 @@ export function History() {
             <div className="m-4 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
               <div className="mb-2 flex items-center gap-2 font-semibold">
                 <CalendarDays className="h-4 w-4" />
-                History not connected yet
+                Fetching history failed
               </div>
               <p>{error}</p>
             </div>
