@@ -1,12 +1,33 @@
-export type AttendanceRange = "today" | "yesterday" | "week" | "month" | "custom";
+// src/types/attendance.ts
 
 export interface AttendanceStats {
   total_teachers: number;
   total_present: number;
-  total_on_time: number;
   total_late: number;
   total_absent: number;
+  total_on_time: number;
+  total_workdays_in_range?: number;
+  total_possible_slots?: number;
+  snapshot_today?: {
+    present: number;
+    absent: number;
+  };
 }
+
+export interface AttendanceStatsResponse {
+  status: string;
+  code: number;
+  message: string;
+  meta: {
+    filtered_range: {
+      start: string;
+      end: string;
+    };
+  };
+  data: AttendanceStats;
+}
+
+export type AttendanceRange = "today" | "yesterday" | "week" | "month" | "custom";
 
 export interface AttendanceRecord {
   log_id: string | null;

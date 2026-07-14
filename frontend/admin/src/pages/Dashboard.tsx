@@ -1,6 +1,13 @@
+// src/pages/Dashboard.tsx
+
 import { useCallback, useEffect, useState } from "react";
 import { AxiosError } from "axios";
-import { Loader2, RefreshCw } from "lucide-react";
+import {
+  Loader2,
+  RefreshCw,
+  UserCheck,
+  AlertCircle,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { AttendanceTable } from "../components/AttendanceTable";
@@ -81,6 +88,14 @@ export function Dashboard() {
     ? `${admin.firstname} ${admin.lastname}`.trim()
     : "Admin User";
 
+  const getRangeLabel = (base: string) => {
+    if (range === "today") return `${base} Today`;
+    if (range === "yesterday") return `${base} Yesterday`;
+    if (range === "week") return `${base} This Week`;
+    if (range === "month") return `${base} This Month`;
+    return `${base} This Period`;
+  };
+
   return (
     <AdminLayout
       menuOpen={menuOpen}
@@ -101,112 +116,140 @@ export function Dashboard() {
         />
       }
     >
-      <section className="mb-6">
-        <p className="text-sm font-medium text-slate-600">{greeting},</p>
-        <h2 className="text-2xl font-bold text-[#0B2545] sm:text-3xl">
-          {adminName}
-        </h2>
-      </section>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="mb-6">
+          <p className="text-sm font-medium text-slate-600">{greeting},</p>
+          <h2 className="text-2xl font-bold text-[#0B2545] sm:text-3xl">
+            {adminName}
+          </h2>
+        </section>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-[#0B2545]" />
-        </div>
-      ) : error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">
-          {error}
-        </div>
-      ) : (
-        <>
-          <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 lg:gap-4">
-            <KpiCard
-              label="Total Teachers"
-              value={stats?.total_teachers ?? 0}
-              tone="teachers"
-            />
-            <KpiCard
-              label={getRange(range, "Present")}
-              value={stats?.total_present ?? 0}
-              tone="present"
-            />
-            <KpiCard
-              label={getRange(range, "Late")}
-              value={stats?.total_late ?? 0}
-              tone="late"
-            />
-            <KpiCard
-              label={getRange(range, "Absent")}
-              value={stats?.total_absent ?? 0}
-              tone="absent"
-            />
-            <KpiCard
-              label={getRange(range, "On Time")}
-              value={stats?.total_on_time ?? 0}
-              tone="ontime"
-            />
-          </section>
-
-          <section className="mt-8">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-lg font-bold text-[#0B2545]">
-                Live Attendance Logs
-              </h3>
-              <Button
-                type="button"
-                onClick={loadData}
-                className="h-9 bg-white px-3 text-[#0B2545] ring-1 ring-slate-200 hover:bg-slate-50"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Refresh
-              </Button>
-            </div>
-
-            {startDate && endDate ? (
-              <AttendanceTable
-                rows={rows}
-                range={range}
-                startDate={startDate}
-                endDate={endDate}
-                page={page}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-[#0B2545]" />
+          </div>
+        ) : error ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">
+            {error}
+          </div>
+        ) : (
+          <>
+            {/* Main KPI Cards */}
+            <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 lg:gap-4">
+              <KpiCard
+                label="Total Teachers"
+                value={stats?.total_teachers ?? 0}
+                tone="teachers"
               />
-            ) : (
-              <AttendanceTable rows={rows} range={range} page={page} />
+              <KpiCard
+                label={getRangeLabel("Present")}
+                value={stats?.total_present ?? 0}
+                tone="present"
+              />
+              <KpiCard
+                label={getRangeLabel("Late")}
+                value={stats?.total_late ?? 0}
+                tone="late"
+              />
+              <KpiCard
+                label={getRangeLabel("Absent")}
+                value={stats?.total_absent ?? 0}
+                tone="absent"
+              />
+              <KpiCard
+                label={getRangeLabel("On Time")}
+                value={stats?.total_on_time ?? 0}
+                tone="ontime"
+              />
+            </section>
+
+            {/* Today's Snapshot - Only show when range is 'today' */}
+            {range === "today" && stats?.snapshot_today && (
+              <section className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4 mt-4">
+                <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col hover:shadow-sm transition-shadow bg-emerald-50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-7 h-7 rounded-full grid place-items-center shrink-0 bg-[#16A34A] text-white">
+                      <UserCheck className="w-4 h-4" />
+                    </span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      Present Today
+                    </span>
+                  </div>
+                  <p className="text-[28px] font-extrabold leading-none text-emerald-800">
+                    {stats.snapshot_today.present}
+                  </p>
+                </div>
+                <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col hover:shadow-sm transition-shadow bg-red-50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-7 h-7 rounded-full grid place-items-center shrink-0 bg-[#DC2626] text-white">
+                      <AlertCircle className="w-4 h-4" />
+                    </span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      Absent Today
+                    </span>
+                  </div>
+                  <p className="text-[28px] font-extrabold leading-none text-red-800">
+                    {stats.snapshot_today.absent}
+                  </p>
+                </div>
+              </section>
             )}
 
-            {(page > 1 || hasNext) && (
-              <div className="mt-4 flex items-center justify-between">
+            {/* Attendance Logs Table */}
+            <section className="mt-8">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h3 className="text-lg font-bold text-[#0B2545]">
+                  Attendance Logs
+                </h3>
                 <Button
                   type="button"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="h-9 bg-white px-4 text-[#0B2545] ring-1 ring-slate-200 disabled:opacity-40"
+                  onClick={loadData}
+                  className="h-9 bg-white px-3 text-[#0B2545] ring-1 ring-slate-200 hover:bg-slate-50"
                 >
-                  Previous
-                </Button>
-                <span className="text-sm text-slate-500">Page {page}</span>
-                <Button
-                  type="button"
-                  disabled={!hasNext}
-                  onClick={() => setPage((p) => p + 1)}
-                  className="h-9 bg-white px-4 text-[#0B2545] ring-1 ring-slate-200 disabled:opacity-40"
-                >
-                  Next
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh
                 </Button>
               </div>
-            )}
-          </section>
-        </>
-      )}
+
+              {startDate && endDate ? (
+                <AttendanceTable
+                  rows={rows}
+                  range={range}
+                  startDate={startDate}
+                  endDate={endDate}
+                  page={page}
+                />
+              ) : (
+                <AttendanceTable rows={rows} range={range} page={page} />
+              )}
+
+              {(page > 1 || hasNext) && (
+                <div className="mt-4 flex items-center justify-between">
+                  <Button
+                    type="button"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="h-9 bg-white px-4 text-[#0B2545] ring-1 ring-slate-200 disabled:opacity-40"
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-slate-500">Page {page}</span>
+                  <Button
+                    type="button"
+                    disabled={!hasNext}
+                    onClick={() => setPage((p) => p + 1)}
+                    className="h-9 bg-white px-4 text-[#0B2545] ring-1 ring-slate-200 disabled:opacity-40"
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </section>
+          </>
+        )}
+      </div>
     </AdminLayout>
   );
 }
-
-const getRange = (rng: AttendanceRange, spec: string) => {
-  if (rng === "today") return `${spec} Today`;
-  else if (rng === "yesterday") return `${spec} Yesterday`;
-  else if (rng === "week") return `${spec} This Week`;
-  else if (rng === "month") return `${spec} This Month`;
-  return `${spec} This Period`;
-};
 
 export default Dashboard;
