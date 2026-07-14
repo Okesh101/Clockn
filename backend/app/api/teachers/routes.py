@@ -12,6 +12,7 @@ import uuid
 teachers_bp = Blueprint("teachers", __name__)
 
 
+# api/v1/teachers
 @teachers_bp.route("", methods=['GET'])
 @limiter.limit("30 per minute")
 @jwt_required()
@@ -72,7 +73,7 @@ def get_all_teachers_endpoint():
             "name": f"{row.lastname} {row.firstname}",
             "email": row.email,
             "phone": row.phone,
-            "created_at": row.created_at.isoformat() if row.created_at else None
+            "created_at": row.created_at.isoformat() if getattr(row, 'created_at', None) else None
         }
         for row in teachers
     ]
@@ -94,6 +95,7 @@ def get_all_teachers_endpoint():
     }), 200
 
 
+# api/v1/teachers/<teacher_id>
 @teachers_bp.route("/<teacher_id>", methods=['GET'])
 @limiter.limit("30 per minute")
 @jwt_required()

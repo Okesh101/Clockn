@@ -637,7 +637,7 @@ def get_teacher_history_endpoint():
             teacher_attendance_data.append({
                 "date": day_str,
                 "log_id": None,
-                "status": AttendanceStatus.ABSENT.value, # or "absent"
+                "status": AttendanceStatus.ABSENT.value,  # or "absent"
                 "punctuality": None,
                 "time_in": None,
                 "time_out": None,
@@ -865,18 +865,16 @@ def get_all_teachers_attendance_endpoint():
     }), 200
 
 
+# api/v1/attendance/stats
 @attendance_bp.route("/stats", methods=['GET'])
 @limiter.limit('30 per minute')
 @jwt_required()
 @roles_required("Admin")
 def get_attendance_stats():
-    # 1. Coordinate localized Lagos timeline targets
     lagos_tz = zoneinfo.ZoneInfo("Africa/Lagos")
     now_lagos = datetime.now(lagos_tz)
     today_lagos = now_lagos.date()
 
-    # 2. Extract and parse URL Date Range Filters
-    # options: today, yesterday, month, custom
     range_type = request.args.get('range_type', 'today')
 
     if range_type == 'yesterday':
@@ -897,67 +895,94 @@ def get_attendance_stats():
                 "code": 400,
                 "message": "Invalid custom date format. Use YYYY-MM-DD"
             }), 400
-    else:  # Default fallback option is always 'today'
+    else:  # Default to 'today'
         start_filter = today_lagos
         end_filter = today_lagos
 
-    # 💡 FIX: Build explicit, fully aware datetime boundaries (From 12:00:00 AM to 11:59:59 PM Lagos time)
+    # Build datetime boundaries for the SQL filter
     start_datetime = datetime.combine(
         start_filter, time.min).replace(tzinfo=lagos_tz)
     end_datetime = datetime.combine(
         end_filter, time.max).replace(tzinfo=lagos_tz)
 
-    # 2. Grab Total Unique Teachers registered in the system
+    # 1. Get total unique active teachers registered in system
     total_teachers = db.session.execute(
         db.select(func.count(Teacher.id))).scalar() or 0
-
     if total_teachers == 0:
         return jsonify({
             "status": "NOT_FOUND",
             "code": 404,
-            "message": "No stats for this range."
+            "message": "No teachers found."
         }), 404
 
-        # 💡 FIX: Use the start_datetime and end_datetime variables you built!
+    # 2. Count total workdays (Mon-Fri) in this selection range
+    workday_count = 0
+    current_date = start_filter
+    while current_date <= end_filter:
+        if current_date.weekday() < 5:  # Skip Saturday and Sunday
+            workday_count += 1
+        current_date += timedelta(days=1)
+
+    # 3. Calculate total possible attendance slots across the organization
+    total_possible_slots = total_teachers * workday_count
+
+    # 4. Fetch the aggregate totals from the database
+    # 💡 FIX: Count unique teacher ids who clocked in during the range window to ground the analytics
     stats_query = db.select(
-        func.count(AttendanceLog.id).label("total_present"),
+        func.count(func.distinct(AttendanceLog.teacher_id)
+                   ).label("total_present_teachers"),
         func.sum(case((AttendanceLog.punctuality ==
                  PunctualityStatus.LATE.value, 1), else_=0)).label("total_late"),
         func.sum(case((AttendanceLog.punctuality ==
                  PunctualityStatus.ON_TIME.value, 1), else_=0)).label("total_on_time")
     ).filter(
-        # This securely intercepts and uses your dynamic calendar range parameters
         AttendanceLog.time_in >= start_datetime,
         AttendanceLog.time_in <= end_datetime
     )
-
     stats_result = db.session.execute(stats_query).one()
 
-    # 3. Safely convert SQL None values to 0 if no records exist for the date range
-    present_count = int(stats_result.total_present or 0)
+    # Read unique active user count
+    present_count = int(stats_result.total_present_teachers or 0)
     late_count = int(stats_result.total_late or 0)
     on_time_count = int(stats_result.total_on_time or 0)
 
-    # 💡 FIX: Absent math is only valid for a single target day (Today or Yesterday).
-    # For a multi-day range, total records can easily exceed total teachers.
-    if start_filter == end_filter:
-        absent_count = max(0, total_teachers - present_count)
-    else:
-        absent_count = 0  # Default to 0 for historical range overviews
+    # 💡 FIX: Absent count represents teachers who never clocked in at all during this time frame
+    absent_count = max(0, total_teachers - present_count)
 
-    # 5. Build clean, unified response layout dictionary
+    # 5. Calculate a real-time snapshot of who is physically missing TODAY
+    today_start = datetime.combine(
+        today_lagos, time.min).replace(tzinfo=lagos_tz)
+    today_end = datetime.combine(
+        today_lagos, time.max).replace(tzinfo=lagos_tz)
+
+    teachers_present_today = db.session.execute(
+        db.select(func.count(func.distinct(AttendanceLog.teacher_id)))
+        .filter(AttendanceLog.time_in >= today_start, AttendanceLog.time_in <= today_end)
+    ).scalar() or 0
+
+    current_absent_today = max(0, total_teachers - teachers_present_today)
+
+    # 6. Deliver the corrected, human-focused analytics payload
     stats_payload = {
         "total_teachers": total_teachers,
+        "total_workdays_in_range": workday_count,
+        "total_possible_slots": total_possible_slots,
         "total_present": present_count,
         "total_on_time": on_time_count,
         "total_late": late_count,
-        "total_absent": absent_count
+        "total_absent": absent_count,
+
+        # Frontend-friendly targets for real-time status card elements
+        "snapshot_today": {
+            "present": teachers_present_today,
+            "absent": current_absent_today
+        }
     }
 
     return jsonify({
         "status": "SUCCESS",
         "code": 200,
-        "message": f"Attendance summary stats for range '{range_type}' computed successfully.",
+        "message": f"Stats for '{range_type}' computed successfully.",
         "meta": {
             "filtered_range": {
                 "start": start_filter.isoformat(),
