@@ -474,6 +474,18 @@ def get_teacher_history_endpoint():
     now_lagos = datetime.now(lagos_tz)
     today_lagos = now_lagos.date()
 
+    # 💡 NEW STEP: Fetch the teacher's profile to know exactly when they joined
+    teacher = db.session.execute(
+        db.select(Teacher).filter_by(id=current_teacher_id)
+    ).scalar_one_or_none()
+
+    if not teacher:
+        return jsonify({
+            "status": "ERROR",
+            "code": 404,
+            "message": "Teacher account profile not found."
+        }), 404
+
     # 2. Extract and parse URL Date Range Filters
     range_type = request.args.get('range_type', 'all')
 
@@ -503,6 +515,10 @@ def get_teacher_history_endpoint():
     else:  # Default fallback option is always 'all'
         start_filter = today_lagos - timedelta(days=90)
         end_filter = today_lagos
+
+    # 💡 THE FIX: A teacher cannot have attendance history before their enrollment date
+    join_date = teacher.created_at.astimezone(lagos_tz).date() if teacher.created_at else today_lagos
+    start_filter = max(start_filter, join_date)
 
     # 3. Generate a sequence of workdays (Monday through Friday) inside the target window
     target_dates = []
