@@ -1,4 +1,5 @@
 // src/components/TeacherDetailModal.tsx
+
 import {
   X,
   Mail,
