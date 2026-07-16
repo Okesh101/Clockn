@@ -5,7 +5,7 @@ from app import db, limiter
 from app.models.Teacher import Teacher
 from app.models.Role import Role
 from app.models.TokenBlocklist import TokenBlocklist
-from app.utils.decorators import roles_required
+from app.utils.decorators import permissions_required
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt, get_jwt_identity
 
 auth_bp = Blueprint("auth", __name__)
@@ -136,7 +136,7 @@ def login_endpoint():
 # api/v1/auth/profile
 @auth_bp.route("/profile", methods=["GET"])
 @jwt_required()
-@roles_required("Teacher", "Admin")
+@permissions_required("view_my_profile")
 def get_profile_endpoint():
     current_teacher_id = get_jwt_identity()
 

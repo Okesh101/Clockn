@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, request
 from app import db, limiter
 from app.models.QrLocation import QrLocation
 from flask_jwt_extended import jwt_required
-from app.utils.decorators import roles_required
+from app.utils.decorators import permissions_required
 
 
 qrcode_bp = Blueprint("qrcode", __name__)
@@ -14,7 +14,7 @@ qrcode_bp = Blueprint("qrcode", __name__)
 @qrcode_bp.route("", methods=["POST"])
 @limiter.limit("5 per minute")
 @jwt_required()
-@roles_required("Admin")
+@permissions_required("manage_qr")
 def create_qrcode_location_endpoint():
     data = request.get_json()
 
@@ -35,7 +35,7 @@ def create_qrcode_location_endpoint():
             "code": 400,
             "message": f"Missing required fields: {', '.join([f for f in ['location', 'latitude', 'longitude'] if not data.get(f)])}"
         }), 400
-    
+
     new_location = QrLocation(
         location=location,
         latitude=latitude,
@@ -64,7 +64,7 @@ def create_qrcode_location_endpoint():
 @qrcode_bp.route("", methods=["GET"])
 @limiter.limit("25 per minute")
 @jwt_required()
-@roles_required("Admin")
+@permissions_required("manage_qr")
 def get_qrcode_locations_endpoint():
     locations = db.session.execute(db.select(QrLocation)).scalars().all()
     return jsonify({

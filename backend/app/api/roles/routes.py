@@ -5,14 +5,14 @@ from app import db, limiter
 from app.models.Teacher import Teacher
 from app.models.Role import Role
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.utils.decorators import roles_required
+from app.utils.decorators import permissions_required
 
 roles_bp = Blueprint("roles", __name__)
 
 # api/v1/roles/seed
 @roles_bp.route("/seed", methods=["POST"])
 @limiter.limit('5 per minute')
-@roles_required("Admin")  # Only Admins can seed roles
+@permissions_required("manage_roles")
 def seed_roles_endpoint():
     data = request.get_json() or {}
     if not data.get("roles"):
@@ -60,7 +60,7 @@ def seed_roles_endpoint():
 @roles_bp.route("/assign", methods=["POST"])
 @limiter.limit('15 per minute')
 @jwt_required()
-@roles_required("Admin")  # Only Admins can assign roles
+@permissions_required("manage_roles")
 def upgrade_roles_endpoint():
     # request = teacher_id: string, roles: list
     current_admin_id = get_jwt_identity()  # Get the identity of the current admin user

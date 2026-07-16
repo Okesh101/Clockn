@@ -8,7 +8,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from app.models.Teacher import Teacher
 from app.models.AttendanceLog import AttendanceLog
 from app.models.QrLocation import QrLocation
-from app.utils.decorators import roles_required
+from app.utils.decorators import permissions_required
 from app.utils.types import AttendanceStatus, PunctualityStatus, AttendanceMethod, DIST_THRESHOLD, CutoffTime
 from app.utils.extensions import calculate_teacher_distance
 from datetime import datetime, time, timedelta
@@ -21,7 +21,7 @@ attendance_bp = Blueprint("attendance", __name__)
 @attendance_bp.route("/in", methods=['POST'])
 @limiter.limit('20 per minute')
 @jwt_required()
-@roles_required("Teacher")
+@permissions_required("clock_in_out")
 def button_clock_in_endpoint():
     current_teacher_id = get_jwt_identity()
     lagos_tz = zoneinfo.ZoneInfo("Africa/Lagos")
@@ -120,7 +120,7 @@ def button_clock_in_endpoint():
 @attendance_bp.route("/qr/in", methods=['POST'])
 @limiter.limit('20 per minute')
 @jwt_required()
-@roles_required("Teacher")
+@permissions_required("clock_in_out")
 def qr_clock_in_endpoint():
     current_teacher_id = get_jwt_identity()
     lagos_tz = zoneinfo.ZoneInfo("Africa/Lagos")
@@ -233,7 +233,7 @@ def qr_clock_in_endpoint():
 @attendance_bp.route("/out", methods=['POST'])
 @limiter.limit('20 per minute')
 @jwt_required()
-@roles_required("Teacher")
+@permissions_required("clock_in_out")
 def button_clock_out_endpoint():
     current_teacher_id = get_jwt_identity()
     lagos_tz = zoneinfo.ZoneInfo("Africa/Lagos")
@@ -341,7 +341,7 @@ def button_clock_out_endpoint():
 @attendance_bp.route("/qr/out", methods=['POST'])
 @limiter.limit('20 per minute')
 @jwt_required()
-@roles_required("Teacher")
+@permissions_required("clock_in_out")
 def qr_clock_out_endpoint():
     current_teacher_id = get_jwt_identity()
     lagos_tz = zoneinfo.ZoneInfo("Africa/Lagos")
@@ -465,7 +465,7 @@ def qr_clock_out_endpoint():
 @attendance_bp.route("/me", methods=['GET'])
 @limiter.limit('30 per minute')
 @jwt_required()
-@roles_required("Teacher")
+@permissions_required("view_my_attendance")
 def get_teacher_history_endpoint():
     current_teacher_id = get_jwt_identity()
 
@@ -517,7 +517,8 @@ def get_teacher_history_endpoint():
         end_filter = today_lagos
 
     # 💡 THE FIX: A teacher cannot have attendance history before their enrollment date
-    join_date = teacher.created_at.astimezone(lagos_tz).date() if teacher.created_at else today_lagos
+    join_date = teacher.created_at.astimezone(
+        lagos_tz).date() if teacher.created_at else today_lagos
     start_filter = max(start_filter, join_date)
 
     # 3. Generate a sequence of workdays (Monday through Friday) inside the target window
@@ -694,7 +695,7 @@ def get_teacher_history_endpoint():
 @attendance_bp.route("", methods=['GET'])
 @limiter.limit('30 per minute')
 @jwt_required()
-@roles_required("Admin")
+@permissions_required("view_all_attendance")
 def get_all_teachers_attendance_endpoint():
     # 1. Coordinate localized Lagos timeline targets
     lagos_tz = zoneinfo.ZoneInfo("Africa/Lagos")
@@ -891,7 +892,7 @@ def get_all_teachers_attendance_endpoint():
 @attendance_bp.route("/stats", methods=['GET'])
 @limiter.limit('30 per minute')
 @jwt_required()
-@roles_required("Admin")
+@permissions_required("view_all_attendance")
 def get_attendance_stats():
     lagos_tz = zoneinfo.ZoneInfo("Africa/Lagos")
     now_lagos = datetime.now(lagos_tz)

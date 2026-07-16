@@ -32,6 +32,7 @@ scheduler = BackgroundScheduler(
     timezone=pytz.timezone("Africa/Lagos")
 )
 
+
 def create_app():
     app = Flask(__name__)
 
@@ -48,7 +49,8 @@ def create_app():
     limiter.init_app(app)
 
     # Force load models into the application context for migrations
-    from app.models.Role import Role, user_roles
+    from app.models.Role import Role, user_roles, role_permissions
+    from app.models.Permission import Permission
     from app.models.TokenBlocklist import TokenBlocklist
     from app.models.Teacher import Teacher
     from app.models.QrLocation import QrLocation
@@ -68,7 +70,6 @@ def create_app():
     app.register_blueprint(qrcode_bp, url_prefix='/api/v1/qrcode')
     app.register_blueprint(attendance_bp, url_prefix='/api/v1/attendance')
     app.register_blueprint(teachers_bp, url_prefix='/api/v1/teachers')
-
 
     # ====================================================================
     # INITIALIZE BACKGROUND SCHEDULER
@@ -118,19 +119,20 @@ def create_app():
             "code": 404,
             "message": "The requested URL or resource was not found on this server."
         }), 404
-    
+
     # ====================================================================
-    # IDEMPOTENT AUTOMATIC ROLE SEEDER
+    # IDEMPOTENT AUTOMATIC ROLE AND PERMISSION SEEDER
     # ====================================================================
     with app.app_context():
-        seed_default_roles()
+        seed_system_permissions_and_roles()
 
     return app
 
 
 @jwt.token_in_blocklist_loader
 def check_if_token_revoked(jwt_header, jwt_payload):
-    from app.models.TokenBlocklist import TokenBlocklist # Import the model here to avoid circular imports
+    # Import the model here to avoid circular imports
+    from app.models.TokenBlocklist import TokenBlocklist
     jti = jwt_payload["jti"]
 
     token = db.session.execute(
@@ -142,24 +144,72 @@ def check_if_token_revoked(jwt_header, jwt_payload):
     return token is not None
 
 
-def seed_default_roles():
-    """Idempotently populates core application roles if missing."""
-    from app.models.Role import Role  # Inline import prevents circular dependency loops
+def seed_system_permissions_and_roles():
+    """Idempotently populates core permissions and maps them to default roles."""
+    from app.models.Permission import Permission
+    from app.models.Role import Role
 
-    default_roles = ["Admin", "Teacher"]
+    # 1. Define ALL system permissions.
+    system_permissions = [ # All permissions
+        "manage_roles",
+        "view_all_attendance",
+        "view_my_attendance",
+        "clock_in_out",
+        "manage_teachers",
+        "view_my_profile",
+        "manage_qr"
+    ]
+    teacher_allowed = [  # Teacher permissions
+        "view_my_attendance",
+        "clock_in_out",
+        "view_my_profile"
+    ]
+
     try:
-        for role_name in default_roles:
-            # Check if this specific role already exists
-            role_exists = db.session.execute(
-                db.select(Role).filter_by(name=role_name)
-            ).scalar_one_or_none()
+        # 2. Seed missing permissions safely
+        permission_objects = {}
+        for perm_name in system_permissions:
+            perm = db.session.execute(db.select(Permission).filter_by(
+                name=perm_name)).scalar_one_or_none()
+            if not perm:
+                perm = Permission(name=perm_name)
+                db.session.add(perm)
+                print(f"Created system permission: '{perm_name}'")
+            permission_objects[perm_name] = perm
 
-            # If missing, stage it for addition
-            if not role_exists:
-                db.session.add(Role(name=role_name))
-                print(f"Seeding missing role: '{role_name}'")
+        # Flush variations to DB so objects obtain relational state
+        db.session.flush()
+
+        # 3. Secure and setup core lookup roles
+        admin_role = db.session.execute(
+            db.select(Role).filter_by(name="Admin")).scalar_one_or_none()
+        if not admin_role:
+            admin_role = Role(name="Admin")
+            db.session.add(admin_role)
+
+        teacher_role = db.session.execute(
+            db.select(Role).filter_by(name="Teacher")).scalar_one_or_none()
+        if not teacher_role:
+            teacher_role = Role(name="Teacher")
+            db.session.add(teacher_role)
+
+        db.session.flush()
+
+        # 4. Map Permissions to Roles (Idempotently)
+        # Teachers only get standard utility permissions
+        for perm_name in teacher_allowed:
+            target_perm = permission_objects[perm_name]
+            if target_perm not in teacher_role.permissions:
+                teacher_role.permissions.append(target_perm)
+
+        # Admins get absolutely everything!
+        for target_perm in permission_objects.values():
+            if target_perm not in admin_role.permissions:
+                admin_role.permissions.append(target_perm)
 
         db.session.commit()
+        print("Permissions and Role configurations successfully synchronized.")
+
     except Exception as e:
         db.session.rollback()
-        print(f"Warning: Auto-seeding roles failed: {str(e)}")
+        print(f"Warning: Auto-seeding permissions failed: {str(e)}")

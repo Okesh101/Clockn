@@ -5,7 +5,7 @@ from app import db, limiter
 from app.models.Teacher import Teacher
 from app.models.AttendanceLog import AttendanceLog
 from app.utils.types import PunctualityStatus
-from app.utils.decorators import roles_required
+from app.utils.decorators import roles_required, permissions_required
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import func, case
 from datetime import timedelta, datetime, time
@@ -20,7 +20,7 @@ teachers_bp = Blueprint("teachers", __name__)
 @teachers_bp.route("", methods=['GET'])
 @limiter.limit("30 per minute")
 @jwt_required()
-@roles_required("Admin")
+@permissions_required("manage_teachers")
 def get_all_teachers_endpoint():
     # 1. Grab and validate page numbers from URL parameters (e.g., ?page=2)
     # Default to page 1, and ensure the input is an integer greater than 0
@@ -103,7 +103,7 @@ def get_all_teachers_endpoint():
 @teachers_bp.route("/<teacher_id>", methods=['GET'])
 @limiter.limit("30 per minute")
 @jwt_required()
-@roles_required("Admin")
+@permissions_required("manage_teachers")
 def get_teacher_endpoint(teacher_id):
     # 1. Validate if incoming string is a valid UUID format before breaking the DB engine
     try:
@@ -138,7 +138,7 @@ def get_teacher_endpoint(teacher_id):
 @teachers_bp.route("/stats", methods=['GET'])
 @limiter.limit("30 per minute")
 @jwt_required()
-@roles_required("Teacher")
+@permissions_required("view_my_profile")
 def get_teacher_stats():
     current_teacher_id = get_jwt_identity()
 
