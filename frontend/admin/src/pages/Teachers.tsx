@@ -279,21 +279,21 @@ export function Teachers() {
   const navigate = useNavigate();
 
   // State
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [teachers, setTeachers] = useState<TeacherListItem[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const [hasNext, setHasNext] = useState(false);
-  const [hasPrev, setHasPrev] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalItems, setTotalItems] = useState<number>(0);
+  const [hasNext, setHasNext] = useState<boolean>(false);
+  const [hasPrev, setHasPrev] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [selectedTeacher, setSelectedTeacher] =
     useState<TeacherListItem | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [summaryLoaded, setSummaryLoaded] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [summaryLoaded, setSummaryLoaded] = useState<boolean>(false);
 
   // KPI summary (loads once)
   const [summary, setSummary] = useState({
@@ -305,11 +305,12 @@ export function Teachers() {
   const PER_PAGE = 20; // Matches backend
 
   // Load teachers from server with server-side pagination
-  const loadTeachers = useCallback(async () => {
+  const loadTeachers = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError(null);
     try {
       const response = await fetchTeachers(currentPage);
+
       setTeachers(response.data ?? []);
       setTotalItems(response.meta?.total_items ?? 0);
       setTotalPages(response.meta?.total_pages ?? 1);
@@ -320,17 +321,17 @@ export function Teachers() {
       if (!summaryLoaded) {
         setSummary({
           total: response.meta?.total_items ?? 0,
-          active: response.meta?.total_items ?? 0, // You can adjust this if you have status data
+          active: response.meta?.total_items ?? 0,
           inactive: 0,
         });
         setSummaryLoaded(true);
       }
     } catch (err) {
-      setError(
+      const errorMessage =
         err instanceof AxiosError
           ? err.response?.data?.message || "Failed to load teachers."
-          : "Failed to load teachers.",
-      );
+          : "Failed to load teachers.";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -363,21 +364,21 @@ export function Teachers() {
   const from = teachers.length ? (currentPage - 1) * PER_PAGE + 1 : 0;
   const to = Math.min(currentPage * PER_PAGE, totalItems);
 
-  const handleLogout = async () => {
+  const handleLogout = async (): Promise<void> => {
     await logout();
     navigate("/auth", { replace: true });
   };
 
   // Handle page change
-  const handlePageChange = (page: number) => {
+  const handlePageChange = (page: number): void => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
     }
   };
 
   // Generate page numbers with ellipsis
-  const getPageNumbers = () => {
-    const pages = [];
+  const getPageNumbers = (): (number | string)[] => {
+    const pages: (number | string)[] = [];
     const maxVisible = 5;
 
     if (totalPages <= maxVisible) {
@@ -417,7 +418,10 @@ export function Teachers() {
   };
 
   // Handle teacher actions
-  const handleTeacherAction = (action: TeacherAction, teacherId: string) => {
+  const handleTeacherAction = (
+    action: TeacherAction,
+    teacherId: string,
+  ): void => {
     const teacher = teachers.find((t) => t.id === teacherId);
     if (!teacher) return;
 
@@ -494,7 +498,7 @@ export function Teachers() {
     }
   };
 
-  const handleModalAction = (action: string, teacherId: string) => {
+  const handleModalAction = (action: string, teacherId: string): void => {
     handleTeacherAction(action as TeacherAction, teacherId);
     if (action !== "view") {
       setIsModalOpen(false);
@@ -511,10 +515,10 @@ export function Teachers() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* KPI Cards - Static once loaded */}
-        <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
           <KpiCard label="Total Teachers" value={summary.total} tone="total" />
           <KpiCard label="Active" value={summary.active} tone="active" />
-          {/* <KpiCard label="Inactive" value={summary.inactive} tone="inactive" /> */}
+          <KpiCard label="Inactive" value={summary.inactive} tone="inactive" />
         </section>
 
         {/* Teachers Table */}
@@ -552,10 +556,10 @@ export function Teachers() {
             >
               <option value="">All Status</option>
               <option value="active">Active</option>
-              {/* <option value="inactive">Inactive</option> */}
+              <option value="inactive">Inactive</option>
             </FilterSelect>
 
-            <div className="relative flex-1 min-w-[220px] ml-auto">
+            <div className="relative flex-1 min-w-[200px] ml-auto">
               <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 value={search}
@@ -662,7 +666,6 @@ export function Teachers() {
                 </div>
 
                 <div className="flex items-center gap-1">
-                  {/* Previous */}
                   <PageBtn
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={!hasPrev || loading}
@@ -670,7 +673,6 @@ export function Teachers() {
                     ‹
                   </PageBtn>
 
-                  {/* Page Numbers with Ellipsis */}
                   {getPageNumbers().map((page, index) => (
                     <span key={index} className="flex items-center">
                       {page === "..." ? (
@@ -686,7 +688,6 @@ export function Teachers() {
                     </span>
                   ))}
 
-                  {/* Next */}
                   <PageBtn
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={!hasNext || loading}
@@ -712,6 +713,7 @@ export function Teachers() {
           }}
           teacher={selectedTeacher}
           onAction={handleModalAction}
+          onRefresh={loadTeachers}
         />
       </div>
     </AdminLayout>

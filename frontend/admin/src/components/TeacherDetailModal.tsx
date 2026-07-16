@@ -1,5 +1,6 @@
 // src/components/TeacherDetailModal.tsx
 
+import { useState, useEffect } from "react";
 import {
   X,
   Mail,
@@ -9,7 +10,14 @@ import {
   User,
   Send,
   LucideMessageCircleCheck,
+  Shield,
+  Check,
+  Loader2,
 } from "lucide-react";
+import toast from "react-hot-toast";
+import { cn } from "../lib/utils";
+import { assignRoles, fetchRolesAndPermissions } from "../services/rolesApi";
+import { fetchTeacherById } from "../services/teachersApi";
 
 interface TeacherDetailModalProps {
   isOpen: boolean;
@@ -20,9 +28,10 @@ interface TeacherDetailModalProps {
     email: string;
     phone: string | null;
     created_at: string | null;
-    // Add other fields as needed
+    roles?: string[];
   } | null;
   onAction?: (action: string, teacherId: string) => void;
+  onRefresh?: () => void;
 }
 
 export function TeacherDetailModal({
@@ -30,7 +39,41 @@ export function TeacherDetailModal({
   onClose,
   teacher,
   onAction,
+  onRefresh,
 }: TeacherDetailModalProps) {
+  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [loadingRoles, setLoadingRoles] = useState(false);
+  const [savingRoles, setSavingRoles] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && teacher) {
+      loadRoles();
+      // Set initial selected roles from teacher data
+      setSelectedRoles(teacher.roles || []);
+    }
+  }, [isOpen, teacher]);
+
+  const loadRoles = async () => {
+    setLoadingRoles(true);
+    try {
+      const data = await fetchRolesAndPermissions();
+      setAvailableRoles(data.roles.map((r) => r.name));
+
+      // Refresh teacher data to get latest roles
+      if (teacher) {
+        const updatedTeacher = await fetchTeacherById(teacher.id);
+        if (updatedTeacher) {
+          setSelectedRoles(updatedTeacher.roles || []);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load roles:", error);
+    } finally {
+      setLoadingRoles(false);
+    }
+  };
+
   if (!isOpen || !teacher) return null;
 
   const handleAction = (action: string) => {
@@ -39,21 +82,43 @@ export function TeacherDetailModal({
     }
   };
 
+  const handleSaveRoles = async () => {
+    setSavingRoles(true);
+    try {
+      await assignRoles(teacher.id, selectedRoles);
+      toast.success(`Roles updated for ${teacher.name}`);
+
+      // Refresh teacher data to get updated roles
+      const updatedTeacher = await fetchTeacherById(teacher.id);
+      if (updatedTeacher) {
+        setSelectedRoles(updatedTeacher.roles || []);
+      }
+
+      if (onRefresh) onRefresh();
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.message || "Failed to update roles";
+      toast.error(errorMessage);
+    } finally {
+      setSavingRoles(false);
+    }
+  };
+
+  const toggleRole = (role: string) => {
+    setSelectedRoles((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
+    );
+  };
+
   // Format phone number for WhatsApp
   const formatPhoneForWhatsApp = (phone: string): string => {
-    // Remove any non-numeric characters
     let cleaned = phone.replace(/\D/g, "");
-
-    // If number starts with 0, replace with country code (assuming Nigeria)
     if (cleaned.startsWith("0")) {
       cleaned = "234" + cleaned.substring(1);
     }
-
-    // If number doesn't start with country code, add it
     if (!cleaned.startsWith("234")) {
       cleaned = "234" + cleaned;
     }
-
     return cleaned;
   };
 
@@ -160,6 +225,75 @@ export function TeacherDetailModal({
             </div>
           </div>
 
+          {/* Roles Section */}
+          <div className="border-t border-slate-200 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-[#0B2545] flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                Roles & Permissions
+              </h3>
+              {selectedRoles.length > 0 && (
+                <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                  {selectedRoles.length} role
+                  {selectedRoles.length > 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+
+            {loadingRoles ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {availableRoles.map((role) => {
+                    const isSelected = selectedRoles.includes(role);
+                    return (
+                      <button
+                        key={role}
+                        onClick={() => toggleRole(role)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                          isSelected
+                            ? "bg-[#0B2545] text-white ring-2 ring-[#0B2545] ring-offset-1"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200",
+                        )}
+                      >
+                        <span className="flex items-center gap-1.5">
+                          {isSelected && <Check className="w-3 h-3" />}
+                          {role}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 flex items-center gap-3">
+                  <button
+                    onClick={handleSaveRoles}
+                    disabled={savingRoles}
+                    className="px-4 py-1.5 bg-[#0B2545] text-white rounded-lg text-xs font-semibold hover:bg-[#1a3a5c] transition-colors disabled:opacity-50"
+                  >
+                    {savingRoles ? (
+                      <>
+                        <Loader2 className="w-3 h-3 inline mr-1 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Roles"
+                    )}
+                  </button>
+                  {selectedRoles.length > 0 && (
+                    <span className="text-xs text-slate-400">
+                      {selectedRoles.length} role
+                      {selectedRoles.length > 1 ? "s" : ""} assigned
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
           {/* Quick Actions */}
           <div className="border-t border-slate-200 pt-4">
             <h3 className="text-sm font-semibold text-[#0B2545] mb-3">
@@ -185,7 +319,7 @@ export function TeacherDetailModal({
                   </button>
                 </>
               )}
- 
+
               <button
                 onClick={() => handleAction("email")}
                 className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-xs sm:text-sm font-semibold flex-1 sm:flex-none min-w-[80px] justify-center"

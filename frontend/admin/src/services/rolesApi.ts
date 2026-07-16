@@ -37,3 +37,14 @@ export async function assignPermissionsToRole(
     permissions,
   });
 }
+
+// 👇 ADD THIS FUNCTION
+export async function assignRoles(
+  teacherId: string,
+  roles: string[]
+): Promise<void> {
+  await api.post("/roles/assign", {
+    teacher_id: teacherId,
+    roles,
+  });
+}
