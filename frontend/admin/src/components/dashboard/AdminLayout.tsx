@@ -7,6 +7,7 @@ import {
   Shield,
   Users,
   X,
+  CalendarDays,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -16,8 +17,9 @@ import { usePersistentSidebar } from "../../hooks/useMediaQuery";
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/teachers", label: "Teachers", icon: Users },
+  { to: "/attendance-logs", label: "Attendance Logs", icon: CalendarDays },
   { to: "/qrcodes", label: "QR Codes", icon: QrCode },
-  { to: "/roles", label: "Roles", icon: Shield },
+  { to: "/roles", label: "Roles & Permissions", icon: Shield },
 ] as const;
 
 interface AdminLayoutProps {

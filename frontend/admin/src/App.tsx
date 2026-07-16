@@ -8,6 +8,7 @@ import { NotFound } from "./pages/NotFound";
 import { QrCodes } from "./pages/QrCodes";
 import { Roles } from "./pages/Roles";
 import { Teachers } from "./pages/Teachers";
+import { AttendanceLogs } from "./pages/AttendanceLogs";
 
 function App() {
   return (
@@ -41,6 +42,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Teachers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/attendance-logs"
+          element={
+            <ProtectedRoute>
+              <AttendanceLogs />
             </ProtectedRoute>
           }
         />
