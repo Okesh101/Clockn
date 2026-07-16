@@ -6,13 +6,13 @@ from app.models.Teacher import Teacher
 from app.models.Role import Role
 from app.models.Permission import Permission
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy import func
 from app.utils.decorators import permissions_required
 
 roles_bp = Blueprint("roles", __name__)
 
+
 # api/v1/roles/seed
-
-
 @roles_bp.route("/seed", methods=["POST"])
 @limiter.limit('5 per minute')
 @jwt_required()
@@ -254,11 +254,24 @@ def upgrade_roles_endpoint():
                 "message": f"The following roles do not exist and cannot be assigned: {non_existing_roles}",
                 "code": 400
             }), 400
+        
+        # Safety Check: Prevent locking the system by stripping the last Admin's powers
+        if any(role.name == "Admin" for role in teacher_to_upgrade.roles) and "Admin" not in existing_role_names:
+            # Check how many admins are left in the database
+            total_admins = db.session.execute(
+                db.select(func.count(Teacher.id)).join(
+                    Teacher.roles).filter(Role.name == "Admin")
+            ).scalar() or 0
+
+            if total_admins <= 1:
+                return jsonify({
+                    "status": "ERROR",
+                    "code": 400,
+                    "message": "Security Protection: Cannot downgrade this user. The system requires at least one active Admin."
+                }), 400
 
         # Assign the existing roles to the teacher
-        for role in existing_roles:
-            if role not in teacher_to_upgrade.roles:
-                teacher_to_upgrade.roles.append(role)
+        teacher_to_upgrade.roles = existing_roles
 
         db.session.commit()
 

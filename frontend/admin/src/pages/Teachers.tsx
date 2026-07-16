@@ -1,5 +1,5 @@
-// src/pages/Teachers.tsx
 
+// src/pages/Teachers.tsx
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { AxiosError } from "axios";
 import {
@@ -10,7 +10,6 @@ import {
   Mail,
   Phone,
   User,
-  Eye,
   MessageSquare,
   LucideMessageCircleCheck,
 } from "lucide-react";
@@ -149,7 +148,7 @@ function PageBtn({
 // Action Types & Components
 // ============================================
 
-type TeacherAction = "call" | "email" | "whatsapp" | "view" | "message";
+type TeacherAction = "call" | "email" | "whatsapp" | "message";
 
 const ACTION_META: Record<
   TeacherAction,
@@ -169,11 +168,6 @@ const ACTION_META: Record<
     label: "WhatsApp",
     icon: LucideMessageCircleCheck,
     color: "text-green-700 border-green-500/50 hover:bg-green-50",
-  },
-  view: {
-    label: "View",
-    icon: Eye,
-    color: "text-slate-700 border-slate-300 hover:bg-slate-50",
   },
   message: {
     label: "Message",
@@ -484,11 +478,6 @@ export function Teachers() {
         }
         break;
 
-      case "view":
-        setSelectedTeacher(teacher);
-        setIsModalOpen(true);
-        break;
-
       case "message":
         alert(`Message to ${teacher.name} (${teacher.email || teacher.phone})`);
         break;
@@ -503,6 +492,12 @@ export function Teachers() {
     if (action !== "view") {
       setIsModalOpen(false);
     }
+  };
+
+  // Handle row click to open modal
+  const handleRowClick = (teacher: TeacherListItem): void => {
+    setSelectedTeacher(teacher);
+    setIsModalOpen(true);
   };
 
   return (
@@ -618,7 +613,8 @@ export function Teachers() {
                       return (
                         <tr
                           key={teacher.id}
-                          className="border-t border-slate-100 hover:bg-slate-50/70"
+                          onClick={() => handleRowClick(teacher)}
+                          className="border-t border-slate-100 hover:bg-slate-50/70 cursor-pointer transition-colors"
                         >
                           <td className="px-4 py-2.5 font-mono text-slate-500 font-semibold whitespace-nowrap">
                             {globalIndex}
@@ -645,9 +641,12 @@ export function Teachers() {
                                 ).toLocaleDateString()
                               : "—"}
                           </td>
-                          <td className="px-3 py-2.5 whitespace-nowrap">
+                          <td
+                            className="px-3 py-2.5 whitespace-nowrap"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <NextActionButton
-                              actions={["call", "whatsapp", "email", "view"]}
+                              actions={["call", "whatsapp", "email"]}
                               onAction={handleTeacherAction}
                               teacherId={teacher.id}
                             />
