@@ -72,6 +72,22 @@ def create_app():
     app.register_blueprint(teachers_bp, url_prefix='/api/v1/teachers')
 
     # ====================================================================
+    # REGISTER CUSTOM MANAGEMENT COMMANDS
+    # ====================================================================
+    @app.cli.command("seed-permissions")
+    def seed_permissions_command():
+        """Flask CLI integration hook to safely force populate database rules."""
+        print("Booting core system database permissions synchronizer...")
+
+        # We push the runtime context explicitly right here
+        with app.app_context():
+            # Import inside context to avoid any circular dependency traps
+            from app.__init__ import seed_system_permissions_and_roles
+            seed_system_permissions_and_roles()
+
+        print("Permissions synchronization complete.")
+
+    # ====================================================================
     # INITIALIZE BACKGROUND SCHEDULER
     # ====================================================================
     # Prevents Werkzeug's reload thread from spinning up a second duplicate scheduler instance
@@ -90,7 +106,7 @@ def create_app():
 
         scheduler.start()
         atexit.register(lambda: scheduler.shutdown())
-        print("📅 Scheduler started with Africa/Lagos time tracking.")
+        print("Scheduler started with Africa/Lagos time tracking.")
 
     # ====================================================================
     # GLOBAL API ERROR HANDLERS (Registered directly on the active 'app')
@@ -120,12 +136,6 @@ def create_app():
             "message": "The requested URL or resource was not found on this server."
         }), 404
 
-    # ====================================================================
-    # IDEMPOTENT AUTOMATIC ROLE AND PERMISSION SEEDER
-    # ====================================================================
-    with app.app_context():
-        seed_system_permissions_and_roles()
-
     return app
 
 
@@ -148,9 +158,10 @@ def seed_system_permissions_and_roles():
     """Idempotently populates core permissions and maps them to default roles."""
     from app.models.Permission import Permission
     from app.models.Role import Role
+    from app import db
 
     # 1. Define ALL system permissions.
-    system_permissions = [ # All permissions
+    system_permissions = [  # All permissions
         "manage_roles",
         "view_all_attendance",
         "view_my_attendance",

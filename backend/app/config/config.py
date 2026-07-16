@@ -29,9 +29,13 @@ class Config:
 
     SQLALCHEMY_DATABASE_URI = database_url
 
-    # SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI')
+    # ====================================================================
+    # FLASK-LIMITER STORAGE CONFIGURATION
+    # ====================================================================
+    # 💡 FIX: Explicitly use "memory://" scheme. This removes the unknown
+    # scheme crash and silences the UserWarning warning completely!
+    RATELIMIT_STORAGE_URI = "memory://"
 
-    # JWT
     # JWT needs a secret key
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'jwt-super-secret-key')
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(seconds=int(
