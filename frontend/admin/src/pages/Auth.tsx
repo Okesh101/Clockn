@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { AlertCircle, Clock3, Loader2, Mail } from "lucide-react";
+import { AlertCircle, Clock3, Loader2, Mail, CheckCircle2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useAuthForm } from "../hooks/useAuthForm";
@@ -114,8 +114,19 @@ export function AuthPage() {
           className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl shadow-black/20"
         >
           <div className="space-y-6 text-center">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-[#0B2545] shadow-lg">
-              <Clock3 className="h-9 w-9 text-white" strokeWidth={2.2} />
+            {/* Logo */}
+            <div className="flex flex-col items-center">
+              <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-[#0B2545] shadow-lg shadow-[#0B2545]/20 transition-all duration-300 hover:scale-105">
+                <Clock3 size={34} strokeWidth={2.2} className="text-white" />
+
+                <div className="absolute -right-1 -bottom-1 rounded-full bg-emerald-500 p-1 shadow-md">
+                  <CheckCircle2
+                    size={16}
+                    strokeWidth={3}
+                    className="text-white"
+                  />
+                </div>
+              </div>
             </div>
             <div>
               <h1 className="text-3xl font-bold text-[#0B2545]">Clock'n</h1>
@@ -124,7 +135,9 @@ export function AuthPage() {
               </p>
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Admin sign in</h2>
+              <h2 className="text-xl font-bold text-slate-900">
+                Admin sign in
+              </h2>
               <p className="mt-1 text-sm text-slate-500">
                 Secure access to attendance management
               </p>

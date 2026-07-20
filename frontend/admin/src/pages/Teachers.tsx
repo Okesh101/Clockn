@@ -1,5 +1,5 @@
-
 // src/pages/Teachers.tsx
+
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { AxiosError } from "axios";
 import {
