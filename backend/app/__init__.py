@@ -104,9 +104,14 @@ def create_app():
             replace_existing=True
         )
 
-        scheduler.start()
-        atexit.register(lambda: scheduler.shutdown())
-        print("Scheduler started with Africa/Lagos time tracking.")
+        # CHECK IF THE SCHEDULER IS ALREADY RUNNING FIRST
+        if not scheduler.running:
+            scheduler.start()
+            atexit.register(lambda: scheduler.shutdown())
+            print("Scheduler started with Africa/Lagos time tracking.")
+        else:
+            print("Scheduler already active, skipping initialization.")
+
 
     # ====================================================================
     # GLOBAL API ERROR HANDLERS (Registered directly on the active 'app')
