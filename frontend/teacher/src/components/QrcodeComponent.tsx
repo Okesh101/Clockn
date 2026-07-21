@@ -1,3 +1,4 @@
+// src/components/QrcodeComponent.tsx
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { AxiosError } from "axios";
@@ -78,32 +79,45 @@ export function QrClockIn({ action, label }: QrClockInProps) {
     setIsScanning(true);
     setStatusMessage("Opening camera…");
 
-    window.setTimeout(async () => {
-      try {
-        const html5QrCode = new Html5Qrcode("qr-reader");
-        qrScannerRef.current = html5QrCode;
+    // Small delay to ensure DOM is ready
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          (decodedText) => {
-            html5QrCode
-              .stop()
-              .then(() => {
-                setIsScanning(false);
-                submitScan(decodedText);
-              })
-              .catch(console.error);
+    try {
+      const html5QrCode = new Html5Qrcode("qr-reader");
+      qrScannerRef.current = html5QrCode;
+
+      // Get the container dimensions for a proper square
+      const container = document.getElementById("qr-reader");
+      const containerWidth = container?.clientWidth || 300;
+      const qrboxSize = Math.min(containerWidth - 40, 280);
+
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: {
+            width: qrboxSize,
+            height: qrboxSize,
           },
-          () => {},
-        );
-        setStatusMessage("Align the QR code within the frame.");
-      } catch (err) {
-        console.error("Camera startup failed:", err);
-        setStatusMessage("Could not access camera permissions.");
-        setIsScanning(false);
-      }
-    }, 150);
+          aspectRatio: 1,
+        },
+        (decodedText) => {
+          html5QrCode
+            .stop()
+            .then(() => {
+              setIsScanning(false);
+              submitScan(decodedText);
+            })
+            .catch(console.error);
+        },
+        () => {},
+      );
+      setStatusMessage("Align the QR code within the frame.");
+    } catch (err) {
+      console.error("Camera startup failed:", err);
+      setStatusMessage("Could not access camera permissions.");
+      setIsScanning(false);
+    }
   };
 
   const closeScanner = async () => {
@@ -171,7 +185,7 @@ export function QrClockIn({ action, label }: QrClockInProps) {
       </div>
 
       {isScanning && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0B2545]/85 p-4 backdrop-blur-sm sm:items-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B2545]/85 p-4 backdrop-blur-sm">
           <div className="relative w-full max-w-md overflow-hidden rounded-[28px] bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-[#0B2545] to-[#12345c] px-5 py-4 text-white">
               <div>
@@ -193,10 +207,14 @@ export function QrClockIn({ action, label }: QrClockInProps) {
             </div>
 
             <div className="p-4">
-              <div
-                id="qr-reader"
-                className="aspect-square w-full overflow-hidden rounded-2xl border-2 border-dashed border-[#0B2545]/20 bg-slate-950"
-              />
+              <div className="relative aspect-square w-full overflow-hidden rounded-2xl border-2 border-dashed border-[#0B2545]/20 bg-slate-950">
+                <div
+                  id="qr-reader"
+                  className="absolute inset-0 flex items-center justify-center"
+                >
+                  {/* The QR reader will render here */}
+                </div>
+              </div>
               <p className="mt-3 text-center text-xs font-medium text-slate-500">
                 Hold steady until the code is detected
               </p>
