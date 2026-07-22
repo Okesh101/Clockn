@@ -27,7 +27,7 @@ def haversine_distance(lat1, lng1, lat2, lng2):
 
 def calculate_teacher_distance(teacher_lat, teacher_lng, coords={}, method=""):
     if method.lower() == 'qr':
-        lat = float(coords.get("latitutde"))
+        lat = float(coords.get("latitude"))
         lng = float(coords.get("longitude"))
     else:
         lat = float(SCHOOL_COORDS.LAT.value)
