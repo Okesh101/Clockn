@@ -63,6 +63,7 @@ def create_app():
     from app.api.qrcode.routes import qrcode_bp
     from app.api.attendance.routes import attendance_bp
     from app.api.teachers.routes import teachers_bp
+    from app.api.charts.routes import charts_bp
 
     app.register_blueprint(roles_bp, url_prefix='/api/v1/roles')
     app.register_blueprint(health_bp, url_prefix='/api/v1/health')
@@ -70,6 +71,7 @@ def create_app():
     app.register_blueprint(qrcode_bp, url_prefix='/api/v1/qrcode')
     app.register_blueprint(attendance_bp, url_prefix='/api/v1/attendance')
     app.register_blueprint(teachers_bp, url_prefix='/api/v1/teachers')
+    app.register_blueprint(charts_bp, url_prefix='/api/v1/charts')
 
     # ====================================================================
     # REGISTER CUSTOM MANAGEMENT COMMANDS
@@ -173,7 +175,8 @@ def seed_system_permissions_and_roles():
         "clock_in_out",
         "manage_teachers",
         "view_my_profile",
-        "manage_qr"
+        "manage_qr",
+        "view_all_stats"
     ]
     teacher_allowed = [  # Teacher permissions
         "view_my_attendance",

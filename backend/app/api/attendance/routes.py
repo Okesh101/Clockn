@@ -892,7 +892,7 @@ def get_all_teachers_attendance_endpoint():
 @attendance_bp.route("/stats", methods=['GET'])
 @limiter.limit('30 per minute')
 @jwt_required()
-@permissions_required("view_all_attendance")
+@permissions_required("view_all_stats")
 def get_attendance_stats():
     lagos_tz = zoneinfo.ZoneInfo("Africa/Lagos")
     now_lagos = datetime.now(lagos_tz)

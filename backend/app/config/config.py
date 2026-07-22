@@ -52,3 +52,12 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     """Production configurations."""
     DEBUG = False
+
+    # ADD THESE ENGINE OPTIONS TO FIX THE SSL TIMEOUT
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_size": 10,          # Maximum steady connections
+        "max_overflow": 5,        # Temporary extra connections allowed
+        "pool_recycle": 280,      # Automatically refresh connections every 4.5 minutes
+        # CRITICAL: Validates the connection before running any SQL queries
+        "pool_pre_ping": True,
+    }
