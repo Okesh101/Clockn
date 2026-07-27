@@ -3,6 +3,7 @@ import {
   Clock3,
   History,
   Home,
+  List,
   LogOut,
   Menu,
   UserRound,
@@ -17,6 +18,7 @@ import { DashboardClockBar } from "./DashboardClockBar";
 const NAV_ITEMS = [
   { to: "/", label: "Home", icon: Home },
   { to: "/history", label: "History", icon: History },
+  { to: "/my-requests", label: "My Requests", icon: List },
   { to: "/profile", label: "Profile", icon: UserRound },
 ] as const;
 
@@ -60,7 +62,9 @@ function SidebarNav({
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-bold">{fullName}</p>
-              <p className="truncate text-xs text-slate-300">{teacher?.email}</p>
+              <p className="truncate text-xs text-slate-300">
+                {teacher?.email}
+              </p>
             </div>
           </div>
           {showClose && onClose && (

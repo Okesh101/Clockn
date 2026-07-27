@@ -1,6 +1,7 @@
 # app/utils/extensions.py
 
-from app.utils.types import SCHOOL_COORDS
+from app.utils.types import SCHOOL_COORDS, DIST_THRESHOLD, CutoffTime
+
 
 def haversine_distance(lat1, lng1, lat2, lng2):
     import math
@@ -34,3 +35,13 @@ def calculate_teacher_distance(teacher_lat, teacher_lng, coords={}, method=""):
         lng = float(SCHOOL_COORDS.LNG.value)
 
     return haversine_distance(teacher_lat, teacher_lng, lat, lng)
+
+
+def is_within_school_premises(teacher_lat, teacher_lng):
+    # Calculate teacher distance from the mid-point of school and reject far distances
+    teacher_distance_m = calculate_teacher_distance(teacher_lat, teacher_lng)
+
+    if teacher_distance_m > DIST_THRESHOLD.BTN.value:
+        return False
+
+    return True

@@ -7,7 +7,7 @@ import { History } from "./pages/History";
 import { Profile } from "./pages/Profile";
 import { NotFound } from "./pages/NotFound";
 import { AuthPage } from "./pages/Auth";
-// import { AuthPage } from "./pages/AuthPage";
+import { MyRequests } from "./pages/MyRequests";
 
 function App() {
   return (
@@ -45,6 +45,10 @@ function App() {
               <History />
             </ProtectedRoute>
           }
+        />
+        <Route 
+          path="/my-requests"
+          element={<MyRequests />}
         />
         <Route
           path="/profile"
