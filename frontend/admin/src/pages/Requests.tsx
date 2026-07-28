@@ -119,6 +119,18 @@ function RequestCard({
     minute: "2-digit",
   });
 
+  const resolvedDate = new Date(request.updated_at);
+  const formattedResDate = resolvedDate.toLocaleDateString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const formattedResTime = resolvedDate.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
   const handleReview = async (action: "approve" | "reject") => {
     setIsSubmitting(true);
     try {
@@ -256,7 +268,7 @@ function RequestCard({
         {!isPending && (
           <div className="flex items-center gap-2 text-xs text-slate-400 shrink-0">
             <CalendarDays className="w-3.5 h-3.5" />
-            Resolved on {new Date(request.updated_at).toLocaleDateString()}
+            Resolved on {formattedResDate} at {formattedResTime}
           </div>
         )}
       </div>

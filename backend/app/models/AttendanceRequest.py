@@ -102,6 +102,5 @@ class AttendanceRequest(db.Model):
                 "id": str(self.teacher_id),
                 "name": teacher_name,
                 "email": teacher_email
-            },
-            "resolved_at": self.updated_at.isoformat()
+            }
         }
