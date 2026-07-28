@@ -75,8 +75,8 @@ class AttendanceRequest(db.Model):
         # Adjust 'first_name' and 'last_name' to match your Teacher model columns
         teacher_name = "Unknown Teacher"
         if self.teacher:
-            f_name = getattr(self.teacher, 'first_name', '')
-            l_name = getattr(self.teacher, 'last_name', '')
+            f_name = getattr(self.teacher, 'firstname', '')
+            l_name = getattr(self.teacher, 'lastname', '')
             teacher_name = f"{l_name} {f_name}".strip() or "Teacher Profile"
 
         return {

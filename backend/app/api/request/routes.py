@@ -6,7 +6,7 @@ from app import limiter, db
 from app.utils.decorators import permissions_required
 from app.utils.extensions import is_within_school_premises
 from app.models.AttendanceRequest import AttendanceRequest
-from app.utils.types import RequestStatus, CutoffTime
+from app.utils.types import RequestStatus, CutoffTime, AttendanceMethod
 from app.models.AttendanceLog import AttendanceLog
 from sqlalchemy.orm import joinedload
 import zoneinfo
@@ -202,6 +202,7 @@ def review_clockout_request(request_id):
         attendance_log = attendance_request.attendance_log
         if attendance_log:
             attendance_log.time_out = now_lagos
+            attendance_log.time_out_method = AttendanceMethod.BUTTON.value
 
     elif action == "REJECT":
         attendance_request.status = RequestStatus.REJECTED.value
