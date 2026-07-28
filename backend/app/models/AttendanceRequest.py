@@ -74,19 +74,34 @@ class AttendanceRequest(db.Model):
         # Read profile parameters directly from your Teacher model fields
         # Adjust 'first_name' and 'last_name' to match your Teacher model columns
         teacher_name = "Unknown Teacher"
+        teacher_email = "Unknown Email Address"
         if self.teacher:
             f_name = getattr(self.teacher, 'firstname', '')
             l_name = getattr(self.teacher, 'lastname', '')
+            t_email = getattr(self.teacher, 'email', '')
+            teacher_email = t_email.strip() or "Teacher Email"
             teacher_name = f"{l_name} {f_name}".strip() or "Teacher Profile"
+
+        resolver_name = "Unknown Admin"
+        if self.resolver:
+            f_name = getattr(self.teacher, 'firstname', '')
+            l_name = getattr(self.teacher, 'lastname', '')
+            resolver_name = f"{l_name} {f_name}".strip() or "Admin Profile"
 
         return {
             "id": str(self.id),
             "teacher_id": str(self.teacher_id),
-            "teacher_name": teacher_name,
             "attendance_id": str(self.attendance_id),
             "teacher_note": self.teacher_note,
             "admin_note": self.admin_note,
             "status": self.status,
             "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+            "resolved_by": resolver_name,
+            "teacher": {
+                "id": str(self.teacher_id),
+                "name": teacher_name,
+                "email": teacher_email
+            },
             "resolved_at": self.updated_at.isoformat()
         }
