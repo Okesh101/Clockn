@@ -7,6 +7,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { NotFound } from "./pages/NotFound";
 import { QrCodes } from "./pages/QrCodes";
 import { Roles } from "./pages/Roles";
+import { AdminRequests } from "./pages/Requests";
 import { Teachers } from "./pages/Teachers";
 import { AttendanceLogs } from "./pages/AttendanceLogs";
 
@@ -50,6 +51,14 @@ function App() {
           element={
             <ProtectedRoute>
               <AttendanceLogs />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/requests"
+          element={
+            <ProtectedRoute>
+              <AdminRequests />
             </ProtectedRoute>
           }
         />

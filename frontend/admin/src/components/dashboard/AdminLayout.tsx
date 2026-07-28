@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   LogOut,
@@ -8,16 +8,19 @@ import {
   Users,
   X,
   CalendarDays,
+  Clock,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 import { useAuth } from "../../contexts/AuthContext";
 import { usePersistentSidebar } from "../../hooks/useMediaQuery";
+import { fetchAllRequests } from "../../services/requestsApi";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/teachers", label: "Teachers", icon: Users },
   { to: "/attendance-logs", label: "Attendance Logs", icon: CalendarDays },
+  { to: "/requests", label: "Requests", icon: Clock },
   { to: "/qrcodes", label: "QR Codes", icon: QrCode },
   { to: "/roles", label: "Roles & Permissions", icon: Shield },
 ] as const;
@@ -45,6 +48,24 @@ function SidebarPanel({
 }) {
   const location = useLocation();
   const { admin } = useAuth();
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Fetch pending requests count
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const response = await fetchAllRequests(1, 1, "pending");
+        setPendingCount(response.meta?.total_items || 0);
+      } catch (error) {
+        // Silently fail
+      }
+    };
+    fetchPendingCount();
+
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchPendingCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const initials = admin
     ? `${admin.firstname?.[0] ?? ""}${admin.lastname?.[0] ?? ""}`.toUpperCase()
@@ -87,6 +108,9 @@ function SidebarPanel({
               ? location.pathname === "/"
               : location.pathname.startsWith(to);
 
+          const isRequests = to === "/requests";
+          const showBadge = isRequests && pendingCount > 0;
+
           return (
             <Link
               key={to}
@@ -99,7 +123,12 @@ function SidebarPanel({
               }`}
             >
               <Icon className="h-4 w-4 shrink-0" />
-              {label}
+              <span className="flex-1">{label}</span>
+              {showBadge && (
+                <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold bg-red-500 text-white rounded-full">
+                  {pendingCount > 99 ? "99+" : pendingCount}
+                </span>
+              )}
             </Link>
           );
         })}
