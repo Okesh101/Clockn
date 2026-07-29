@@ -465,11 +465,11 @@ function RequestCard({ request }: { request: AttendanceRequest }) {
   const getStatusMessage = () => {
     switch (request.status) {
       case "pending":
-        return "Waiting for admin approval";
+        return "Waiting for admin approval...";
       case "approved":
-        return "Request approved! You can clock out";
+        return "Request approved! You have been clocked out.";
       case "rejected":
-        return "Request was declined";
+        return "Request was declined.";
       default:
         return "";
     }
