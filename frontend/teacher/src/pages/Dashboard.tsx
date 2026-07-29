@@ -1,6 +1,6 @@
 // src/pages/TeacherDashboard.tsx
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sparkles, Clock, List } from "lucide-react";
 import toast from "react-hot-toast";
@@ -20,6 +20,25 @@ export function Dashboard() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showRequestButton, setShowRequestButton] = useState(false);
+
+  // Check if current time is after 8:05 AM
+  useEffect(() => {
+    const checkTime = () => {
+      const now = new Date();
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+
+      // 8:05 AM = 8 hours, 5 minutes
+      const isAfter805AM = hours > 8 || (hours === 8 && minutes >= 5);
+      setShowRequestButton(isAfter805AM);
+    };
+
+    checkTime();
+    // Update every minute
+    const interval = setInterval(checkTime, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -58,7 +77,8 @@ export function Dashboard() {
 
         {/* Quick Actions */}
         <section className="mt-6 flex flex-wrap items-center gap-3">
-          {!isClockIn && (
+          {/* Only show Request Early Clock-Out after 8:05 AM */}
+          {showRequestButton && (
             <button
               onClick={() => setShowRequestModal(true)}
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-700 rounded-xl hover:bg-amber-100 transition-colors text-sm font-semibold"

@@ -84,9 +84,9 @@ class AttendanceRequest(db.Model):
 
         resolver_name = "Unknown Admin"
         if self.resolver:
-            f_name = getattr(self.teacher, 'firstname', '')
-            l_name = getattr(self.teacher, 'lastname', '')
-            resolver_name = f"{l_name} {f_name}".strip() or "Admin Profile"
+            f_name = getattr(self.resolver, 'firstname', '')
+            l_name = getattr(self.resolver, 'lastname', '')
+            resolver_name = f"{l_name} {f_name} (Admin)".strip() or "Admin Profile"
 
         return {
             "id": str(self.id),
