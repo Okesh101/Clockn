@@ -45,7 +45,7 @@ class SCHOOL_COORDS(Enum):
 
 class DIST_THRESHOLD(Enum):
     QR = 30.0
-    BTN = 1050000000000000.0
+    BTN = 105.0
 
 
 class CutoffTime(Enum):  # Real school cut-off time for arrival is 7:30AM
